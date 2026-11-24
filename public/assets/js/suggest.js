@@ -7,6 +7,12 @@
  * and shown under the box. Choosing one (click, or ↑ ↓ + Enter) puts its value in the box
  * and submits the box's form, so the list below filters to that record.
  * Pressing Enter without choosing simply searches for what was typed.
+ *
+ * Options:
+ *   data-suggest-by="selectId"     send that <select>'s value as &by=… (e.g. "Search by: Student number"),
+ *                                  and use its option's data-placeholder as the box's placeholder.
+ *   data-suggest-pick="hiddenId"   pick mode: choosing a suggestion stores its id in that hidden input
+ *                                  (instead of submitting); the form can't be sent until one is chosen.
  */
 (function () {
     'use strict';
@@ -24,6 +30,8 @@
     document.querySelectorAll('input[data-suggest]').forEach(function (input, n) {
         const scope = input.dataset.suggest;
         const form = input.form;
+        const bySelect = input.dataset.suggestBy ? document.getElementById(input.dataset.suggestBy) : null;
+        const pickInput = input.dataset.suggestPick ? document.getElementById(input.dataset.suggestPick) : null;
 
         // Wrap the box so the list can sit right under it.
         const wrap = document.createElement('div');
@@ -84,9 +92,41 @@
         function choose(i) {
             const it = items[i];
             if (!it) { return; }
-            input.value = it.value;
             close();
+            if (pickInput) {
+                pickInput.value = it.id;
+                input.value = it.pick || it.label;
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+                return;
+            }
+            input.value = it.value;
             if (form) { form.submit(); }
+        }
+
+        if (pickInput && form) {
+            form.addEventListener('submit', function (e) {
+                if (!pickInput.value) {
+                    e.preventDefault();
+                    input.classList.add('is-invalid');
+                    input.focus();
+                }
+            });
+        }
+
+        if (bySelect) {
+            const syncPlaceholder = function () {
+                const opt = bySelect.options[bySelect.selectedIndex];
+                if (opt && opt.dataset.placeholder) { input.placeholder = opt.dataset.placeholder; }
+            };
+            bySelect.addEventListener('change', function () {
+                syncPlaceholder();
+                items = [];
+                close();
+                input.focus();
+                if (input.value.trim()) { fetchSuggestions(); }
+            });
+            syncPlaceholder();
         }
 
         function fetchSuggestions() {
@@ -94,7 +134,8 @@
             if (q.length < 1) { items = []; close(); return; }
             if (controller) { controller.abort(); }
             controller = new AbortController();
-            fetch(endpoint + '?scope=' + encodeURIComponent(scope) + '&q=' + encodeURIComponent(q), {
+            const by = bySelect ? '&by=' + encodeURIComponent(bySelect.value) : '';
+            fetch(endpoint + '?scope=' + encodeURIComponent(scope) + by + '&q=' + encodeURIComponent(q), {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }, signal: controller.signal,
             })
                 .then(r => (r.ok ? r.json() : []))
@@ -103,6 +144,10 @@
         }
 
         input.addEventListener('input', function () {
+            if (pickInput) {           // typing again clears the earlier choice
+                pickInput.value = '';
+                input.classList.remove('is-valid');
+            }
             clearTimeout(timer);
             timer = setTimeout(fetchSuggestions, 180);
         });

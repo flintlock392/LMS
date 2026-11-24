@@ -40,7 +40,15 @@ class Suggest extends BaseController
             'books'    => $this->books($q, 'all'),
             'students' => $this->students($q, 'all'),
             'staff'    => $this->staff($q),
-            'fines'    => array_merge($this->students($q, 'fines'), $this->books($q, 'fines')),
+            // Fine Management follows its "Search by" choice.
+            'fines'    => match ((string) $this->request->getGet('by')) {
+                'student_no' => $this->students($q, 'fines', 'student_no'),
+                'name'       => $this->students($q, 'fines', 'name'),
+                'book'       => $this->books($q, 'fines'),
+                default      => array_merge($this->students($q, 'fines'), $this->books($q, 'fines')),
+            },
+            // Active students only (used by pickers such as "Add a fine").
+            'borrowers' => $this->students($q, 'active'),
             default    => [],
         };
 
@@ -56,15 +64,27 @@ class Suggest extends BaseController
         return '(' . implode(' OR ', array_map(static fn ($c) => $c . ' LIKE ' . $like, $columns)) . ')';
     }
 
-    /** $only: all | loans (has borrowed) | fines (has a fine) */
-    private function students(string $q, string $only): array
+    /**
+     * $only:  all | loans (has borrowed) | fines (has a fine) | active (not suspended)
+     * $match: any (name, number, email, course) | student_no | name
+     */
+    private function students(string $q, string $only, string $match = 'any'): array
     {
         $b = db_connect()->table('users')
             ->select('users.id, users.name, users.id_number, users.course, users.status')
-            ->where('users.role', UserModel::STUDENT)
-            ->groupStart()->like('users.name', $q)->orLike('users.id_number', $q)->orLike('users.email', $q)->orLike('users.course', $q)->groupEnd();
+            ->where('users.role', UserModel::STUDENT);
 
-        if ($only === 'loans') {
+        if ($match === 'student_no') {
+            $b->like('users.id_number', $q);
+        } elseif ($match === 'name') {
+            $b->like('users.name', $q);
+        } else {
+            $b->groupStart()->like('users.name', $q)->orLike('users.id_number', $q)->orLike('users.email', $q)->orLike('users.course', $q)->groupEnd();
+        }
+
+        if ($only === 'active') {
+            $b->where('users.status', 'active');
+        } elseif ($only === 'loans') {
             $b->where('EXISTS (SELECT 1 FROM borrowings x WHERE x.user_id = users.id)', null, false);
         } elseif ($only === 'fines') {
             $b->select("(SELECT COALESCE(SUM(f.amount),0) FROM fines f WHERE f.user_id = users.id AND f.status = 'unpaid') AS unpaid", false)
@@ -76,11 +96,14 @@ class Suggest extends BaseController
 
         return array_map(static fn ($u) => [
             'type'  => 'student',
-            'label' => $u['name'],
-            'sub'   => $u['id_number'] . ($u['course'] ? ' · ' . $u['course'] : '')
+            'id'    => (int) $u['id'],
+            // Searching by number shows the number first; otherwise the name.
+            'label' => $match === 'student_no' ? $u['id_number'] : $u['name'],
+            'sub'   => ($match === 'student_no' ? $u['name'] : $u['id_number']) . ($u['course'] ? ' · ' . $u['course'] : '')
                 . (isset($u['unpaid']) && (float) $u['unpaid'] > 0 ? ' · owes ' . money($u['unpaid']) : '')
                 . ($u['status'] !== 'active' ? ' · suspended' : ''),
-            'value' => $u['id_number'],
+            'value' => $match === 'name' ? $u['name'] : $u['id_number'],
+            'pick'  => $u['name'] . ' (' . $u['id_number'] . ')',
         ], $rows);
     }
 

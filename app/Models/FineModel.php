@@ -36,11 +36,24 @@ class FineModel extends Model
             $this->where('fines.status', $f['status'] ?? 'unpaid');
         }
         if (! empty($f['q'])) {
-            $this->groupStart()
-                ->like('u.name', $f['q'])
-                ->orLike('u.id_number', $f['q'])
-                ->orLike('books.title', $f['q'])
-                ->groupEnd();
+            // "Search by": student_no | name | book | (anything else) = all three
+            switch ($f['by'] ?? 'all') {
+                case 'student_no':
+                    $this->like('u.id_number', $f['q']);
+                    break;
+                case 'name':
+                    $this->like('u.name', $f['q']);
+                    break;
+                case 'book':
+                    $this->like('books.title', $f['q']);
+                    break;
+                default:
+                    $this->groupStart()
+                        ->like('u.name', $f['q'])
+                        ->orLike('u.id_number', $f['q'])
+                        ->orLike('books.title', $f['q'])
+                        ->groupEnd();
+            }
         }
         if (! empty($f['user_id'])) {
             $this->where('fines.user_id', (int) $f['user_id']);

@@ -12,6 +12,15 @@ use App\Models\UserModel;
  */
 class Fines extends BaseController
 {
+    /** Options for "Search by" on the fines list: key => [label, placeholder]. */
+    public const SEARCH_BY = [
+        'all'        => ['Everything', 'Student name, number, or book'],
+        'student_no' => ['Student number', 'e.g. 2024-00005'],
+        'name'       => ['Student name', 'e.g. Enzo Ramos'],
+        'book'       => ['Book title', 'e.g. Clean Code'],
+    ];
+    public const SEARCH_BY_KEYS = ['all', 'student_no', 'name', 'book'];
+
     /** "Name (ID number)" for activity descriptions. */
     private function who(int|string $userId): string
     {
@@ -26,6 +35,7 @@ class Fines extends BaseController
         $filters = [
             'status' => in_array($status, ['unpaid', 'paid', 'waived', 'all'], true) ? $status : 'unpaid',
             'q'      => trim((string) $this->request->getGet('q')),
+            'by'     => in_array($this->request->getGet('by'), self::SEARCH_BY_KEYS, true) ? (string) $this->request->getGet('by') : 'all',
         ];
 
         $model = new FineModel();
@@ -35,7 +45,7 @@ class Fines extends BaseController
             'pager'    => $model->pager,
             'filters'  => $filters,
             'totals'   => (new FineModel())->totals(),
-            'students' => is_head() ? (new UserModel())->where('role', UserModel::STUDENT)->activeBorrowers() : [],
+
         ]);
     }
 
@@ -74,7 +84,7 @@ class Fines extends BaseController
     public function create()
     {
         $rules = [
-            'user_id' => 'required|is_natural_no_zero|is_not_unique[users.id]',
+            'user_id' => ['label' => 'Student', 'rules' => 'required|is_natural_no_zero|is_not_unique[users.id]', 'errors' => ['required' => 'Choose a student from the suggestions.']],
             'reason'  => 'required|in_list[' . implode(',', array_keys(FineModel::REASONS)) . ']',
             'amount'  => 'required|decimal|greater_than[0]|less_than_equal_to[100000]',
             'notes'   => 'permit_empty|max_length[255]',

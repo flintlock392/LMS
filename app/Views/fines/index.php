@@ -18,11 +18,33 @@
                     <a class="<?= $filters['status'] === $key ? 'active' : '' ?>" href="<?= site_url('fines?status=' . $key) ?>"><?= $label ?></a>
                 <?php endforeach; ?>
             </nav>
-            <form class="filters" method="get">
+            <form class="date-range mb-3" method="get">
                 <input type="hidden" name="status" value="<?= esc($filters['status']) ?>">
-                <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($filters['q']) ?>" placeholder="Student name, number, or book" aria-label="Search fines" data-suggest="fines">
-                <button class="btn btn-sm btn-nook"><i class="bi bi-search"></i></button>
+                <div class="field">
+                    <label for="by">Search by</label>
+                    <select class="form-select form-select-sm" id="by" name="by">
+                        <?php foreach (\App\Controllers\Fines::SEARCH_BY as $key => [$label, $placeholder]): ?>
+                            <option value="<?= $key ?>" data-placeholder="<?= esc($placeholder) ?>" <?= $filters['by'] === $key ? 'selected' : '' ?>><?= $label ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="fine-q">Search</label>
+                    <input class="form-control form-control-sm" type="search" id="fine-q" name="q" value="<?= esc($filters['q']) ?>"
+                           placeholder="<?= esc(\App\Controllers\Fines::SEARCH_BY[$filters['by']][1]) ?>"
+                           data-suggest="fines" data-suggest-by="by" style="width:240px">
+                </div>
+                <button class="btn btn-sm btn-nook"><i class="bi bi-search me-1"></i>Search</button>
+                <?php if ($filters['q'] !== ''): ?>
+                    <a class="btn btn-sm btn-link" href="<?= site_url('fines?status=' . $filters['status']) ?>">Clear</a>
+                <?php endif; ?>
             </form>
+            <?php if ($filters['q'] !== ''): ?>
+                <div class="filter-summary"><i class="bi bi-funnel"></i>
+                    <span>Showing <?= $filters['status'] === 'all' ? 'all' : esc($filters['status']) ?> fines where
+                        <strong><?= esc(strtolower(\App\Controllers\Fines::SEARCH_BY[$filters['by']][0] === 'Everything' ? 'student name, number or book' : \App\Controllers\Fines::SEARCH_BY[$filters['by']][0])) ?></strong>
+                        contains "<?= esc($filters['q']) ?>" · <?= $pager->getTotal() ?> result(s)</span></div>
+            <?php endif; ?>
             <?php if (! $rows): ?>
                 <div class="empty"><i class="bi bi-emoji-smile"></i>No fines to show.</div>
             <?php else: ?>
@@ -71,10 +93,12 @@
                 <h2 class="panel-title"><i class="bi bi-plus-lg"></i> Add a fine</h2>
                 <form method="post" action="<?= site_url('fines/create') ?>">
                     <?= csrf_field() ?>
-                    <div class="mb-3"><label class="form-label" for="user_id">Student</label>
-                        <select class="form-select" id="user_id" name="user_id" required><option value="">Choose…</option>
-                            <?php foreach ($students as $s): ?><option value="<?= $s['id'] ?>"><?= esc($s['name']) ?> (<?= esc($s['id_number']) ?>)</option><?php endforeach; ?>
-                        </select></div>
+                    <div class="mb-3"><label class="form-label" for="fine-student">Student</label>
+                        <input class="form-control" type="search" id="fine-student" placeholder="Type a name or student number"
+                               data-suggest="borrowers" data-suggest-pick="user_id" aria-describedby="fine-student-help">
+                        <input type="hidden" id="user_id" name="user_id">
+                        <div class="form-text" id="fine-student-help">Choose a student from the suggestions.</div>
+                    </div>
                     <div class="row g-2 mb-3">
                         <div class="col-7"><label class="form-label" for="reason">Reason</label>
                             <select class="form-select" id="reason" name="reason"><?php foreach (FineModel::REASONS as $k => $v): ?><option value="<?= $k ?>" <?= $k === 'other' ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></select></div>
