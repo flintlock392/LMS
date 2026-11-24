@@ -30,9 +30,7 @@
                                    value="<?= esc(old('email', '', false)) ?>" required>
                         </div>
                         <div class="col-sm-7">
-                            <label class="form-label" for="course">Course / Program</label>
-                            <input class="form-control" id="course" name="course" placeholder="e.g. BS Information Technology"
-                                   value="<?= esc(old('course', '', false)) ?>" required>
+                            <?= view('partials/course_field', ['current' => '', 'selectClass' => 'form-control', 'showStar' => false]) ?>
                         </div>
                         <div class="col-sm-5">
                             <label class="form-label" for="year_level">Year level</label>

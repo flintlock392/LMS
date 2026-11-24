@@ -14,12 +14,6 @@ class BookModel extends Model
     /** Copies currently out on loan. */
     public const SQL_ON_LOAN = "(SELECT COUNT(*) FROM borrowings br WHERE br.book_id = books.id AND br.status = 'borrowed')";
 
-    /** Copies held at the desk for a "ready" reservation. */
-    public const SQL_ON_HOLD = "(SELECT COUNT(*) FROM reservations rs WHERE rs.book_id = books.id AND rs.status = 'ready')";
-
-    /** Copies waiting in the reservation queue. */
-    public const SQL_QUEUE = "(SELECT COUNT(*) FROM reservations rq WHERE rq.book_id = books.id AND rq.status = 'pending')";
-
     protected $table         = 'books';
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
@@ -31,16 +25,14 @@ class BookModel extends Model
 
     public static function availableSql(): string
     {
-        return '(books.stock_count - ' . self::SQL_ON_LOAN . ' - ' . self::SQL_ON_HOLD . ')';
+        return '(books.stock_count - ' . self::SQL_ON_LOAN . ')';
     }
 
-    /** Select books with their category name and live circulation counts. */
+    /** Select books with their category name, copies on loan and copies on the shelf. */
     public function withAvailability(): self
     {
         $this->select('books.*, categories.name AS category_name', false)
             ->select(self::SQL_ON_LOAN . ' AS on_loan', false)
-            ->select(self::SQL_ON_HOLD . ' AS on_hold', false)
-            ->select(self::SQL_QUEUE . ' AS queued', false)
             ->select(self::availableSql() . ' AS available', false)
             ->join('categories', 'categories.id = books.category_id', 'left');
 
@@ -141,7 +133,6 @@ class BookModel extends Model
         $row = $this->db->query(
             'SELECT COUNT(*) AS titles, COALESCE(SUM(stock_count), 0) AS copies,
                     COALESCE(SUM(' . self::SQL_ON_LOAN . '), 0) AS on_loan,
-                    COALESCE(SUM(' . self::SQL_ON_HOLD . '), 0) AS on_hold,
                     SUM(CASE WHEN ' . self::availableSql() . ' <= 0 THEN 1 ELSE 0 END) AS unavailable,
                     SUM(CASE WHEN ' . self::availableSql() . ' > 0 AND ' . self::availableSql() . ' <= ' . self::LOW_STOCK . ' THEN 1 ELSE 0 END) AS low
              FROM books'
@@ -151,8 +142,7 @@ class BookModel extends Model
             'titles'      => (int) $row['titles'],
             'copies'      => (int) $row['copies'],
             'on_loan'     => (int) $row['on_loan'],
-            'on_hold'     => (int) $row['on_hold'],
-            'available'   => (int) $row['copies'] - (int) $row['on_loan'] - (int) $row['on_hold'],
+            'available'   => (int) $row['copies'] - (int) $row['on_loan'],
             'unavailable' => (int) $row['unavailable'],
             'low'         => (int) $row['low'],
         ];

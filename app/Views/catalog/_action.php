@@ -1,23 +1,15 @@
 <?php
 /**
- * Reserve button / status for one book.
- * @var array $book  @var array $mine
+ * What a student / visitor can do with one book. Books are borrowed at the library desk.
+ * @var array $book  @var array $mine  (book_id => true when the student has it on loan)
  */
-$state = $mine[(int) $book['id']] ?? null;
 ?>
 <?php if (current_role() === 'student'): ?>
-    <?php if ($state === 'loan'): ?>
+    <?php if (isset($mine[(int) $book['id']])): ?>
         <span class="pill pill-info">You have this book</span>
-    <?php elseif ($state === 'ready'): ?>
-        <span class="pill pill-success">Ready for you at the desk</span>
-    <?php elseif ($state === 'pending'): ?>
-        <span class="pill pill-warning">You're in the queue</span>
-    <?php else: ?>
-        <form method="post" action="<?= site_url('catalog/' . $book['id'] . '/reserve') ?>" class="m-0">
-            <?= csrf_field() ?>
-            <button class="btn btn-sm btn-nook"><i class="bi bi-bookmark-plus me-1"></i><?= (int) $book['available'] > 0 ? 'Reserve for pickup' : 'Join waiting list' ?></button>
-        </form>
+    <?php elseif ((int) $book['available'] > 0): ?>
+        <span class="small text-muted"><i class="bi bi-geo-alt me-1"></i>Borrow at the desk<?= $book['shelf_location'] ? ' · shelf ' . esc($book['shelf_location']) : '' ?></span>
     <?php endif; ?>
-<?php elseif (! session()->get('isLoggedIn')): ?>
-    <a class="btn btn-sm btn-outline-nook" href="<?= site_url('login') ?>">Log in to reserve</a>
+<?php elseif (! session()->get('isLoggedIn') && (int) $book['available'] > 0 && $book['shelf_location']): ?>
+    <span class="small text-muted"><i class="bi bi-geo-alt me-1"></i>Shelf <?= esc($book['shelf_location']) ?></span>
 <?php endif; ?>

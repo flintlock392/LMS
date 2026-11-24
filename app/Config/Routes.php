@@ -37,10 +37,7 @@ $routes->group('', ['filter' => 'role'], static function ($routes) {
 
 // ---- Students -------------------------------------------------------------
 $routes->group('', ['filter' => 'role:student'], static function ($routes) {
-    $routes->post('catalog/(:num)/reserve', 'Catalog::reserve/$1');
     $routes->get('my/loans', 'My::loans');
-    $routes->get('my/reservations', 'My::reservations');
-    $routes->post('my/reservations/(:num)/cancel', 'My::cancelReservation/$1');
     $routes->get('my/fines', 'My::fines');
 });
 
@@ -94,12 +91,7 @@ $routes->group('', ['filter' => $staff], static function ($routes) {
     $routes->post('circulation/issue', 'Circulation::issue');
     $routes->post('circulation/(:num)/return', 'Circulation::receive/$1');
 
-    $routes->get('reservations', 'Reservations::index');
-    $routes->get('reservations/students', 'Reservations::students'); // suggestive search (JSON)
     $routes->get('suggest', 'Suggest::index');                       // search-box suggestions (JSON)
-    $routes->post('reservations/create', 'Reservations::create');
-    $routes->post('reservations/(:num)/issue', 'Reservations::issue/$1');
-    $routes->post('reservations/(:num)/cancel', 'Reservations::cancel/$1');
 
     $routes->get('members', 'Members::index');
     $routes->get('members/new', 'Members::new');

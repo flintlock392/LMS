@@ -10,8 +10,8 @@
             <span><span class="value d-block"><?= count($loans) ?> / <?= (int) setting('max_loans') ?></span><span class="label">Books borrowed</span></span></a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <a class="stat" href="<?= site_url('my/reservations') ?>"><span class="icon good"><i class="bi bi-bookmark-check"></i></span>
-            <span><span class="value d-block"><?= count($reservations) ?></span><span class="label">Active reservations</span></span></a>
+        <a class="stat" href="<?= site_url('catalog') ?>"><span class="icon good"><i class="bi bi-bookmark-plus"></i></span>
+            <span><span class="value d-block"><?= max(0, (int) setting('max_loans') - count($loans)) ?></span><span class="label">More books you can borrow</span></span></a>
     </div>
     <div class="col-sm-6 col-xl-3">
         <a class="stat" href="<?= site_url('my/fines') ?>"><span class="icon <?= $unpaid > 0 ? 'bad' : 'good' ?>"><i class="bi bi-cash-coin"></i></span>
@@ -27,10 +27,6 @@
     <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>
         You have overdue books. If you return them today you'll be charged about <strong><?= money($estimated) ?></strong>, and the amount grows each day.</div>
 <?php endif; ?>
-<?php foreach ($reservations as $r): if ($r['status'] === 'ready'): ?>
-    <div class="alert alert-success"><i class="bi bi-bookmark-star me-1"></i>
-        <strong><?= esc($r['title']) ?></strong> is ready for pickup at the desk. Collect it by <?= fmt_date($r['expires_at'], true) ?>.</div>
-<?php endif; endforeach; ?>
 
 <div class="row g-4">
     <div class="col-xl-7">
@@ -60,22 +56,6 @@
         </div>
     </div>
     <div class="col-xl-5">
-        <div class="panel">
-            <h2 class="panel-title"><i class="bi bi-bookmark-check"></i> My reservations</h2>
-            <?php if (! $reservations): ?>
-                <div class="empty"><i class="bi bi-bookmark"></i>No active reservations.</div>
-            <?php else: ?>
-                <ul class="list-unstyled mb-0">
-                    <?php foreach ($reservations as $r): ?>
-                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                            <span><?= esc($r['title']) ?>
-                                <span class="d-block small text-muted"><?= $r['status'] === 'pending' ? 'Position #' . $r['position'] . ' in queue' : 'Pick up by ' . fmt_date($r['expires_at']) ?></span></span>
-                            <?= status_badge($r['status']) ?>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </div>
         <div class="panel">
             <h2 class="panel-title"><i class="bi bi-stars"></i> New in the collection</h2>
             <?php foreach ($newBooks as $b): ?>

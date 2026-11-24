@@ -6,7 +6,6 @@ use App\Models\BookModel;
 use App\Models\BorrowingModel;
 use App\Models\CategoryModel;
 use App\Models\InventoryLogModel;
-use App\Models\ReservationModel;
 
 /**
  * Head Librarian: "Book Management" (full control, including delete + categories).
@@ -34,7 +33,6 @@ class Books extends BaseController
         return view('books/show', [
             'book'         => $book,
             'loans'        => (new BorrowingModel())->filtered(['status' => 'all'])->where('borrowings.book_id', $id)->findAll(15),
-            'reservations' => (new ReservationModel())->filtered(['status' => 'open'])->where('reservations.book_id', $id)->findAll(),
             'log'          => (new InventoryLogModel())->recent(15, $id),
         ]);
     }

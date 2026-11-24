@@ -6,7 +6,6 @@ use App\Models\BookModel;
 use App\Models\BorrowingModel;
 use App\Models\FineModel;
 use App\Models\InventoryLogModel;
-use App\Models\ReservationModel;
 use App\Models\SettingModel;
 use App\Models\UserModel;
 use RuntimeException;
@@ -20,7 +19,6 @@ class Circulation
 {
     private BookModel $books;
     private BorrowingModel $borrowings;
-    private ReservationModel $reservations;
     private FineModel $fines;
     private UserModel $users;
     private SettingModel $settings;
@@ -29,7 +27,6 @@ class Circulation
     {
         $this->books        = new BookModel();
         $this->borrowings   = new BorrowingModel();
-        $this->reservations = new ReservationModel();
         $this->fines        = new FineModel();
         $this->users        = new UserModel();
         $this->settings     = new SettingModel();
@@ -42,8 +39,6 @@ class Circulation
     /** Lend a book to a student. Returns the new borrowing id. */
     public function checkout(int $bookId, int $userId, int $staffId): int
     {
-        $this->housekeep();
-
         $book = $this->books->find($bookId);
         if (! $book) {
             throw new RuntimeException('Book not found.');
@@ -67,39 +62,18 @@ class Circulation
             throw new RuntimeException($user['name'] . ' already has a copy of "' . $book['title'] . '".');
         }
 
-        // A ready reservation for this student already holds a copy at the desk.
-        $reservation = $this->reservations->where('user_id', $userId)->where('book_id', $bookId)
-            ->where('status', 'ready')->first();
-
-        if (! $reservation && $this->books->availableCopies($bookId) <= 0) {
-            throw new RuntimeException('No copies of "' . $book['title'] . '" are available. You can place a reservation instead.');
+        if ($this->books->availableCopies($bookId) <= 0) {
+            throw new RuntimeException('No copies of "' . $book['title'] . '" are on the shelf right now. All copies are on loan.');
         }
 
-        $db = db_connect();
-        $db->transStart();
-
-        $now = date('Y-m-d H:i:s');
-        $id  = (int) $this->borrowings->insert([
+        $id = (int) $this->borrowings->insert([
             'book_id'     => $bookId,
             'user_id'     => $userId,
             'issued_by'   => $staffId,
-            'borrowed_at' => $now,
+            'borrowed_at' => date('Y-m-d H:i:s'),
             'due_date'    => date('Y-m-d', strtotime('+' . (int) $this->settings->value('loan_days') . ' days')),
             'status'      => 'borrowed',
         ], true);
-
-        // A pending reservation by the same student is satisfied by this loan too.
-        $open = $reservation ?? $this->reservations->openForUserAndBook($userId, $bookId);
-        if ($open) {
-            $this->reservations->update($open['id'], [
-                'status'       => 'fulfilled',
-                'closed_at'    => $now,
-                'handled_by'   => $staffId,
-                'borrowing_id' => $id,
-            ]);
-        }
-
-        $db->transComplete();
 
         log_activity('circulation', 'issued', 'Issued "' . $book['title'] . '" to ' . $user['name'] . ' (' . $user['id_number'] . '), due '
             . fmt_date(date('Y-m-d', strtotime('+' . (int) $this->settings->value('loan_days') . ' days'))), 'borrowing', $id, $staffId);
@@ -157,8 +131,6 @@ class Circulation
             }
         }
 
-        $promoted = $this->promoteQueue((int) $book['id']);
-
         $db->transComplete();
 
         $message = '"' . $book['title'] . '" ' . ($condition === 'lost' ? 'marked as lost.' : 'returned.');
@@ -176,9 +148,6 @@ class Circulation
             $borrowingId,
             $staffId
         );
-        if ($promoted) {
-            $message .= ' It is now held for the next reservation in the queue.';
-        }
 
         return $message;
     }
@@ -198,124 +167,6 @@ class Circulation
         }
 
         return [$days, round($fine, 2)];
-    }
-
-    // ------------------------------------------------------------------
-    // Reservations
-    // ------------------------------------------------------------------
-
-    /** Place a reservation. Returns the reservation row after queue processing. */
-    public function reserve(int $bookId, int $userId, ?int $actorId = null): array
-    {
-        $this->housekeep();
-
-        $book = $this->books->find($bookId);
-        if (! $book) {
-            throw new RuntimeException('Book not found.');
-        }
-        $user = $this->borrowerOrFail($userId);
-
-        if ($this->reservations->openForUserAndBook($userId, $bookId)) {
-            throw new RuntimeException($user['name'] . ' already has an open reservation for "' . $book['title'] . '".');
-        }
-        if ($this->borrowings->userHasBook($userId, $bookId)) {
-            throw new RuntimeException($user['name'] . ' is currently borrowing "' . $book['title'] . '".');
-        }
-        $max = (int) $this->settings->value('max_reservations');
-        if ($this->reservations->openCountForUser($userId) >= $max) {
-            throw new RuntimeException('The limit of ' . $max . ' active reservation(s) has been reached.');
-        }
-
-        $id = (int) $this->reservations->insert([
-            'book_id'     => $bookId,
-            'user_id'     => $userId,
-            'status'      => 'pending',
-            'reserved_at' => date('Y-m-d H:i:s'),
-            'handled_by'  => $actorId,
-        ], true);
-
-        $description = $actorId === $userId
-            ? $user['name'] . ' reserved "' . $book['title'] . '" online'
-            : 'Reserved "' . $book['title'] . '" for ' . $user['name'] . ' (' . $user['id_number'] . ')';
-        log_activity('reservation', 'placed', $description, 'reservation', $id, $actorId);
-
-        $this->promoteQueue($bookId);
-
-        return $this->reservations->find($id);
-    }
-
-    public function cancelReservation(int $id, int $actorId, ?int $mustBelongTo = null): void
-    {
-        $r = $this->reservations->find($id);
-        if (! $r || ! in_array($r['status'], ReservationModel::OPEN, true)) {
-            throw new RuntimeException('That reservation is no longer active.');
-        }
-        if ($mustBelongTo !== null && (int) $r['user_id'] !== $mustBelongTo) {
-            throw new RuntimeException('That reservation is not yours.');
-        }
-
-        $this->reservations->update($id, [
-            'status'     => 'cancelled',
-            'closed_at'  => date('Y-m-d H:i:s'),
-            'handled_by' => $actorId,
-        ]);
-
-        $book = $this->books->find($r['book_id']);
-        $user = $this->users->find($r['user_id']);
-        log_activity('reservation', 'cancelled', 'Cancelled ' . ($actorId === (int) $r['user_id'] ? 'own reservation' : $user['name'] . '\'s reservation')
-            . ' for "' . $book['title'] . '"', 'reservation', $id, $actorId);
-
-        if ($r['status'] === 'ready') {
-            $this->promoteQueue((int) $r['book_id']);
-        }
-    }
-
-    /**
-     * Move the oldest pending reservations to "ready" while copies are free.
-     * Returns how many were promoted.
-     */
-    public function promoteQueue(int $bookId): int
-    {
-        $promoted = 0;
-        $holdDays = max(1, (int) $this->settings->value('hold_days'));
-
-        while ($this->books->availableCopies($bookId) > 0) {
-            $next = $this->reservations->where('book_id', $bookId)->where('status', 'pending')
-                ->orderBy('reserved_at', 'ASC')->first();
-            if (! $next) {
-                break;
-            }
-            $this->reservations->update($next['id'], [
-                'status'     => 'ready',
-                'ready_at'   => date('Y-m-d H:i:s'),
-                'expires_at' => date('Y-m-d H:i:s', strtotime('+' . $holdDays . ' days')),
-            ]);
-            $promoted++;
-
-            $book = $this->books->find($bookId);
-            $user = $this->users->find($next['user_id']);
-            log_activity('reservation', 'ready', 'System: a copy of "' . $book['title'] . '" is now held for ' . $user['name'] . ' (next in queue)', 'reservation', (int) $next['id'], 0);
-        }
-
-        return $promoted;
-    }
-
-    /** Expire desk holds that were not collected in time and pass the copy on. */
-    public function housekeep(): void
-    {
-        $expired = $this->reservations->where('status', 'ready')
-            ->where('expires_at <', date('Y-m-d H:i:s'))->findAll();
-
-        foreach ($expired as $r) {
-            $this->reservations->update($r['id'], ['status' => 'expired', 'closed_at' => date('Y-m-d H:i:s')]);
-
-            $book = $this->books->find($r['book_id']);
-            $user = $this->users->find($r['user_id']);
-            log_activity('reservation', 'expired', 'System: ' . $user['name'] . ' did not collect "' . $book['title'] . '" in time; hold expired', 'reservation', (int) $r['id'], 0);
-        }
-        foreach (array_unique(array_column($expired, 'book_id')) as $bookId) {
-            $this->promoteQueue((int) $bookId);
-        }
     }
 
     // ------------------------------------------------------------------
@@ -357,7 +208,7 @@ class Circulation
         if ($change < 0 && ! $fromLoan) {
             $free = $this->books->availableCopies($bookId);
             if (-$change > $free) {
-                throw new RuntimeException('Only ' . $free . ' copy(ies) of "' . $book['title'] . '" are on the shelf. Copies on loan or on hold cannot be removed.');
+                throw new RuntimeException('Only ' . $free . ' copy(ies) of "' . $book['title'] . '" are on the shelf. Copies on loan cannot be removed.');
             }
         }
 
@@ -374,10 +225,6 @@ class Circulation
         log_activity('inventory', $change > 0 ? 'added' : 'removed', ($change > 0 ? 'Added ' : 'Removed ') . abs($change) . ' cop' . (abs($change) === 1 ? 'y' : 'ies')
             . ($change > 0 ? ' to "' : ' of "') . $book['title'] . '" (' . (InventoryLogModel::LABELS[$reason] ?? $reason) . ') · now ' . $new
             . ($notes !== '' ? ' · ' . $notes : ''), 'book', $bookId, $staffId);
-
-        if ($change > 0) {
-            $this->promoteQueue($bookId);
-        }
 
         return $new;
     }

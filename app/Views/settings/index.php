@@ -6,7 +6,6 @@ $groups = [
     'General'      => ['library_name', 'currency'],
     'Borrowing'    => ['loan_days', 'max_loans', 'block_unpaid_fines'],
     'Fines'        => ['fine_per_day', 'max_overdue_fine', 'damaged_book_fee', 'lost_book_fee'],
-    'Reservations' => ['max_reservations', 'hold_days'],
 ];
 ?>
 <?= $this->section('content') ?>

@@ -26,7 +26,7 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
 <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
     <?php if (is_head()): ?>
         <a class="btn btn-outline-nook" href="<?= site_url('activity') ?>"><i class="bi bi-clock-history me-1"></i>Activity Log</a>
-        <a class="btn btn-outline-nook" href="<?= $url(['tab' => 'books']) ?>#update-stock"><i class="bi bi-arrow-repeat me-1"></i>Update Stock</a>
+        <button class="btn btn-outline-nook" type="button" data-bs-toggle="modal" data-bs-target="#stockModal"><i class="bi bi-arrow-repeat me-1"></i>Update Stock</button>
     <?php endif; ?>
     <button class="btn btn-outline-nook" type="button" data-bs-toggle="modal" data-bs-target="#issueModal"><i class="bi bi-box-arrow-up-right me-1"></i>Issue book</button>
     <a class="btn btn-nook" href="<?= site_url('books/new') ?>"><i class="bi bi-plus-lg me-1"></i>Add book</a>
@@ -137,7 +137,7 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
                         <td><?= esc($b['shelf_location'] ?? '—') ?></td>
                         <td class="sub"><?= fmt_date($b['created_at']) ?></td>
                         <td><?= availability_badge((int) $b['available'], (int) $b['stock_count']) ?>
-                            <?php if ((int) $b['queued'] > 0): ?><div class="sub"><?= (int) $b['queued'] ?> reservation(s) waiting</div><?php endif; ?></td>
+                            </td>
                         <td class="actions">
                             <a class="btn btn-sm btn-outline-nook" href="<?= site_url('books/' . $b['id']) ?>" title="View"><i class="bi bi-eye"></i></a>
                             <a class="btn btn-sm btn-outline-nook" href="<?= site_url('books/' . $b['id'] . '/edit') ?>" title="Edit"><i class="bi bi-pencil"></i></a>
@@ -157,12 +157,11 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
     <?php else: ?>
         <!-- ===== Books: stock levels (formerly Inventory) ===== -->
         <div class="row g-4">
-            <div class="<?= is_head() ? 'col-xl-8' : 'col-12' ?>">
+            <div class="col-12">
                 <div class="d-flex flex-wrap gap-3 small text-muted mb-2">
                     <span><strong class="text-body"><?= $stats['copies'] ?></strong> copies owned</span>
                     <span><strong class="text-body"><?= $stats['available'] ?></strong> on the shelf</span>
                     <span><strong class="text-body"><?= $stats['on_loan'] ?></strong> on loan</span>
-                    <span><strong class="text-body"><?= $stats['on_hold'] ?></strong> held for pickup</span>
                     <span><strong class="text-body"><?= $stats['unavailable'] ?></strong> title(s) unavailable</span>
                 </div>
                 <?php if (! is_head()): ?><p class="small text-muted">View only. Ask the Head Librarian to add or remove copies.</p><?php endif; ?>
@@ -170,61 +169,21 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
                     <div class="empty"><i class="bi bi-box-seam"></i>No titles match.</div>
                 <?php else: ?>
                     <div class="table-responsive"><table class="table table-nook">
-                        <thead><tr><th>Title</th><th>Shelf</th><th class="text-center">Owned</th><th class="text-center">On loan</th><th class="text-center">On hold</th><th class="text-center">Waiting</th><th>On the shelf</th></tr></thead>
+                        <thead><tr><th>Title</th><th>Shelf</th><th class="text-center">Owned</th><th class="text-center">On loan</th><th>On the shelf</th></tr></thead>
                         <tbody><?php foreach ($rows as $b): ?>
                             <tr>
                                 <td><a class="text-reset" href="<?= site_url('books/' . $b['id']) ?>"><?= esc($b['title']) ?></a><div class="sub"><?= esc($b['isbn']) ?></div></td>
                                 <td><?= esc($b['shelf_location'] ?? '—') ?></td>
                                 <td class="text-center"><?= (int) $b['stock_count'] ?></td>
                                 <td class="text-center"><?= (int) $b['on_loan'] ?></td>
-                                <td class="text-center"><?= (int) $b['on_hold'] ?></td>
-                                <td class="text-center"><?= (int) $b['queued'] ?: '—' ?></td>
                                 <td><?= availability_badge((int) $b['available'], (int) $b['stock_count']) ?>
-                                    <?php if ((int) $b['queued'] > 0 && (int) $b['available'] <= 0): ?><div class="sub text-danger">Consider buying more</div><?php endif; ?></td>
+                                    </td>
                             </tr>
                         <?php endforeach; ?></tbody>
                     </table></div>
                     <?= $pager->links('default', 'nook') ?>
                 <?php endif; ?>
             </div>
-
-            <?php if (is_head()): ?>
-                <div class="col-xl-4">
-                    <div class="panel" id="update-stock" style="background:#fdf6eb">
-                        <h2 class="panel-title"><i class="bi bi-arrow-repeat"></i> Update Stock</h2>
-                        <form method="post" action="<?= site_url('inventory/adjust') ?>">
-                            <?= csrf_field() ?>
-                            <div class="mb-3"><label class="form-label" for="book_id_s">Title</label>
-                                <select class="form-select" id="book_id_s" name="book_id" required>
-                                    <option value="">Choose…</option>
-                                    <?php foreach ($allBooks as $b): ?><option value="<?= $b['id'] ?>" <?= (string) old('book_id') === (string) $b['id'] ? 'selected' : '' ?>><?= esc($b['title']) ?></option><?php endforeach; ?>
-                                </select></div>
-                            <div class="mb-3">
-                                <div class="btn-group w-100" role="group" aria-label="Direction">
-                                    <input type="radio" class="btn-check" name="direction" id="dir-add" value="add" <?= old('direction', 'add') === 'add' ? 'checked' : '' ?>>
-                                    <label class="btn btn-outline-success" for="dir-add"><i class="bi bi-plus-lg"></i> Add copies</label>
-                                    <input type="radio" class="btn-check" name="direction" id="dir-remove" value="remove" <?= old('direction') === 'remove' ? 'checked' : '' ?>>
-                                    <label class="btn btn-outline-danger" for="dir-remove"><i class="bi bi-dash-lg"></i> Remove</label>
-                                </div>
-                            </div>
-                            <div class="row g-2 mb-3">
-                                <div class="col-4"><label class="form-label" for="quantity">Qty</label>
-                                    <input class="form-control" type="number" id="quantity" name="quantity" min="1" max="1000" value="<?= esc(old('quantity', '1', false)) ?>" required></div>
-                                <div class="col-8"><label class="form-label" for="reason">Reason</label>
-                                    <select class="form-select" id="reason" name="reason" required>
-                                        <optgroup label="Add" data-dir="add"><?php foreach (InventoryLogModel::ADD_REASONS as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></optgroup>
-                                        <optgroup label="Remove" data-dir="remove"><?php foreach (InventoryLogModel::REMOVE_REASONS as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></optgroup>
-                                        <option value="correction">Count correction</option>
-                                    </select></div>
-                            </div>
-                            <div class="mb-3"><label class="form-label" for="notes">Notes</label>
-                                <input class="form-control" id="notes" name="notes" maxlength="255" placeholder="e.g. PO #1234, water damage" value="<?= esc(old('notes', '', false)) ?>"></div>
-                            <button class="btn btn-nook w-100">Save change</button>
-                            <p class="form-text mb-0 mt-2">Only copies on the shelf can be removed. Lost loans are removed automatically when returned as "Lost".</p>
-                        </form>
-                    </div>
-                </div>
-            <?php endif; ?>
         </div>
 
         <section class="history-card mt-4" aria-labelledby="history-title">
@@ -279,6 +238,50 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
             </div>
         <?php endif; ?>
     </div>
+<?php endif; ?>
+
+<?php if (is_head()): ?>
+<!-- Update Stock → Adjust copies -->
+<div class="modal fade" id="stockModal" tabindex="-1" aria-labelledby="stockTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px"><div class="modal-content adjust-modal">
+        <form method="post" action="<?= site_url('inventory/adjust') ?>">
+            <?= csrf_field() ?>
+            <div class="modal-header border-0 pb-0">
+                <h2 class="modal-title panel-title mb-0" id="stockTitle"><i class="bi bi-sliders"></i> Adjust copies</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label" for="book_id_s">Title</label>
+                    <select class="form-select" id="book_id_s" name="book_id" required>
+                        <option value="">Choose…</option>
+                        <?php foreach ($allBooks as $b): ?><option value="<?= $b['id'] ?>" <?= (string) old('book_id') === (string) $b['id'] ? 'selected' : '' ?>><?= esc($b['title']) ?></option><?php endforeach; ?>
+                    </select></div>
+                <div class="mb-3">
+                    <div class="btn-group w-100" role="group" aria-label="Add or remove copies">
+                        <input type="radio" class="btn-check" name="direction" id="dir-add" value="add" <?= old('direction', 'add') === 'add' ? 'checked' : '' ?>>
+                        <label class="btn btn-outline-success" for="dir-add"><i class="bi bi-plus-lg"></i> Add copies</label>
+                        <input type="radio" class="btn-check" name="direction" id="dir-remove" value="remove" <?= old('direction') === 'remove' ? 'checked' : '' ?>>
+                        <label class="btn btn-outline-danger" for="dir-remove"><i class="bi bi-dash-lg"></i> Remove copies</label>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-4"><label class="form-label" for="quantity">Qty</label>
+                        <input class="form-control" type="number" id="quantity" name="quantity" min="1" max="1000" value="<?= esc(old('quantity', '1', false)) ?>" required></div>
+                    <div class="col-8"><label class="form-label" for="reason">Reason</label>
+                        <select class="form-select" id="reason" name="reason" required>
+                            <optgroup label="Add" data-dir="add"><?php foreach (InventoryLogModel::ADD_REASONS as $k => $v): ?><option value="<?= $k ?>" <?= old('reason') === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></optgroup>
+                            <optgroup label="Remove" data-dir="remove"><?php foreach (InventoryLogModel::REMOVE_REASONS as $k => $v): ?><option value="<?= $k ?>" <?= old('reason') === $k ? 'selected' : '' ?>><?= $v ?></option><?php endforeach; ?></optgroup>
+                            <option value="correction" <?= old('reason') === 'correction' ? 'selected' : '' ?>>Count correction</option>
+                        </select></div>
+                </div>
+                <div class="mb-3"><label class="form-label" for="notes">Notes</label>
+                    <input class="form-control" id="notes" name="notes" maxlength="255" placeholder="e.g. PO #1234, water damage" value="<?= esc(old('notes', '', false)) ?>"></div>
+                <button class="btn btn-nook w-100">Save change</button>
+                <p class="form-text mb-0 mt-2">Only copies on the shelf can be removed. Lost loans are removed automatically when returned as "Lost".</p>
+            </div>
+        </form>
+    </div></div>
+</div>
 <?php endif; ?>
 
 <!-- Issue a book -->
@@ -364,6 +367,10 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
         document.getElementById('lostNote').classList.toggle('d-none', v !== 'lost');
     }
     document.querySelectorAll('#returnForm input[name="condition"]').forEach(r => r.addEventListener('change', toggleCondition));
+    // If a stock change was rejected (e.g. too many copies removed), reopen the dialog with the entries kept.
+    <?php if (is_head() && old('quantity') !== null): ?>
+    document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('stockModal')).show());
+    <?php endif; ?>
     // Update Stock: only show reasons that match Add / Remove.
     const reason = document.getElementById('reason');
     if (reason) {

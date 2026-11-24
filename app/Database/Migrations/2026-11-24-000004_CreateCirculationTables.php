@@ -5,7 +5,7 @@ namespace App\Database\Migrations;
 use CodeIgniter\Database\Migration;
 
 /**
- * Borrowing, reservations, fines, inventory history and system settings.
+ * Borrowing, fines, inventory history and system settings.
  */
 class CreateCirculationTables extends Migration
 {
@@ -34,32 +34,6 @@ class CreateCirculationTables extends Migration
         $this->forge->addForeignKey('issued_by', 'users', 'id', 'CASCADE', 'SET NULL');
         $this->forge->addForeignKey('received_by', 'users', 'id', 'CASCADE', 'SET NULL');
         $this->forge->createTable('borrowings');
-
-        // ---- Reservations (a queue per book) --------------------------------
-        // pending  = waiting for a copy
-        // ready    = a copy is being held at the desk until expires_at
-        // fulfilled / cancelled / expired = closed
-        $this->forge->addField([
-            'id'           => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
-            'book_id'      => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
-            'user_id'      => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
-            'status'       => ['type' => 'ENUM', 'constraint' => ['pending', 'ready', 'fulfilled', 'cancelled', 'expired'], 'default' => 'pending'],
-            'reserved_at'  => ['type' => 'DATETIME'],
-            'ready_at'     => ['type' => 'DATETIME', 'null' => true],
-            'expires_at'   => ['type' => 'DATETIME', 'null' => true],
-            'closed_at'    => ['type' => 'DATETIME', 'null' => true],
-            'handled_by'   => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
-            'borrowing_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
-            'created_at'   => ['type' => 'DATETIME', 'null' => true],
-            'updated_at'   => ['type' => 'DATETIME', 'null' => true],
-        ]);
-        $this->forge->addKey('id', true);
-        $this->forge->addKey(['book_id', 'status']);
-        $this->forge->addForeignKey('book_id', 'books', 'id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('user_id', 'users', 'id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('handled_by', 'users', 'id', 'CASCADE', 'SET NULL');
-        $this->forge->addForeignKey('borrowing_id', 'borrowings', 'id', 'CASCADE', 'SET NULL');
-        $this->forge->createTable('reservations');
 
         // ---- Fines -----------------------------------------------------------
         $this->forge->addField([
@@ -115,7 +89,6 @@ class CreateCirculationTables extends Migration
         $this->forge->dropTable('settings', true);
         $this->forge->dropTable('inventory_logs', true);
         $this->forge->dropTable('fines', true);
-        $this->forge->dropTable('reservations', true);
         $this->forge->dropTable('borrowings', true);
     }
 }

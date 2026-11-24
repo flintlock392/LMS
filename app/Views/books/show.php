@@ -24,19 +24,10 @@
         <div class="panel">
             <h3 class="panel-title">Copies</h3>
             <div class="row text-center g-2">
-                <div class="col-3"><div class="fs-4 fw-semibold"><?= (int) $book['stock_count'] ?></div><div class="small text-muted">Owned</div></div>
-                <div class="col-3"><div class="fs-4 fw-semibold text-success"><?= max(0, (int) $book['available']) ?></div><div class="small text-muted">Shelf</div></div>
-                <div class="col-3"><div class="fs-4 fw-semibold"><?= (int) $book['on_loan'] ?></div><div class="small text-muted">On loan</div></div>
-                <div class="col-3"><div class="fs-4 fw-semibold"><?= (int) $book['on_hold'] ?></div><div class="small text-muted">On hold</div></div>
+                <div class="col-4"><div class="fs-4 fw-semibold"><?= (int) $book['stock_count'] ?></div><div class="small text-muted">Owned</div></div>
+                <div class="col-4"><div class="fs-4 fw-semibold text-success"><?= max(0, (int) $book['available']) ?></div><div class="small text-muted">Shelf</div></div>
+                <div class="col-4"><div class="fs-4 fw-semibold"><?= (int) $book['on_loan'] ?></div><div class="small text-muted">On loan</div></div>
             </div>
-            <?php if ($reservations): ?>
-                <h4 class="small fw-semibold mt-3">Reservation queue</h4>
-                <ol class="small mb-0 ps-3">
-                    <?php foreach ($reservations as $r): ?>
-                        <li><?= esc($r['borrower_name']) ?> <?= status_badge($r['status']) ?></li>
-                    <?php endforeach; ?>
-                </ol>
-            <?php endif; ?>
         </div>
     </div>
     <div class="col-lg-7">

@@ -7,7 +7,6 @@ use App\Models\BorrowingModel;
 use App\Models\CategoryModel;
 use App\Models\FineModel;
 use App\Models\InventoryLogModel;
-use App\Models\ReservationModel;
 use App\Models\UserModel;
 use CodeIgniter\Database\Seeder;
 
@@ -34,12 +33,12 @@ class LibrarySeeder extends Seeder
             ['id_number' => 'HL-0001', 'name' => 'Maria Santos', 'email' => 'head@cozynook.test', 'password' => 'Head@12345', 'role' => UserModel::HEAD, 'position' => 'Head Librarian', 'phone' => '0917 000 0001'],
             ['id_number' => 'LS-0001', 'name' => 'Paolo Reyes', 'email' => 'staff@cozynook.test', 'password' => 'Staff@12345', 'role' => UserModel::LIBRARIAN, 'position' => 'Circulation Librarian', 'phone' => '0917 000 0002'],
             ['id_number' => 'LS-0002', 'name' => 'Ana Cruz', 'email' => 'staff2@cozynook.test', 'password' => 'Staff@12345', 'role' => UserModel::LIBRARIAN, 'position' => 'Cataloguing Assistant'],
-            ['id_number' => '2024-00001', 'name' => 'Juan dela Cruz', 'email' => 'juan@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'BS Information Technology', 'year_level' => '2nd Year'],
-            ['id_number' => '2024-00002', 'name' => 'Bea Villanueva', 'email' => 'bea@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'BS Computer Science', 'year_level' => '1st Year'],
-            ['id_number' => '2024-00003', 'name' => 'Carlo Mendoza', 'email' => 'carlo@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'BS Education', 'year_level' => '3rd Year'],
-            ['id_number' => '2024-00004', 'name' => 'Diane Garcia', 'email' => 'diane@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'BS Psychology', 'year_level' => '4th Year'],
-            ['id_number' => '2024-00005', 'name' => 'Enzo Ramos', 'email' => 'enzo@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'BS Information Technology', 'year_level' => '2nd Year'],
-            ['id_number' => '2024-00006', 'name' => 'Faye Torres', 'email' => 'faye@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'BA Communication', 'year_level' => '1st Year', 'status' => 'suspended'],
+            ['id_number' => '2024-00001', 'name' => 'Juan dela Cruz', 'email' => 'juan@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'Bachelor of Science in Information Technology', 'year_level' => '2nd Year'],
+            ['id_number' => '2024-00002', 'name' => 'Bea Villanueva', 'email' => 'bea@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'Bachelor of Science in Computer Science', 'year_level' => '1st Year'],
+            ['id_number' => '2024-00003', 'name' => 'Carlo Mendoza', 'email' => 'carlo@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'Bachelor of Science in Education', 'year_level' => '3rd Year'],
+            ['id_number' => '2024-00004', 'name' => 'Diane Garcia', 'email' => 'diane@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'Bachelor of Science in Psychology', 'year_level' => '4th Year'],
+            ['id_number' => '2024-00005', 'name' => 'Enzo Ramos', 'email' => 'enzo@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'Bachelor of Science in Information Technology', 'year_level' => '2nd Year'],
+            ['id_number' => '2024-00006', 'name' => 'Faye Torres', 'email' => 'faye@student.test', 'password' => 'Student@12345', 'role' => UserModel::STUDENT, 'course' => 'Bachelor of Arts in Communication', 'year_level' => '1st Year', 'status' => 'suspended'],
         ];
         $userIds = [];
         foreach ($accounts as $account) {
@@ -97,10 +96,10 @@ class LibrarySeeder extends Seeder
 
         // Courses each title is meant for (empty = general reading for every course).
         $courses = [
-            '9780132350884' => 'BS Information Technology', '9780596517748' => 'BS Information Technology', '9780135957059' => 'BS Information Technology',
-            '9780134685991' => 'BS Computer Science', '9780553380163' => 'BS Computer Science',
-            '9780743273565' => 'BA Communication', '9780141439518' => 'BA Communication',
-            '9780061120084' => 'BS Education', '9780062316097' => 'BS Education',
+            '9780132350884' => 'Bachelor of Science in Information Technology', '9780596517748' => 'Bachelor of Science in Information Technology', '9780135957059' => 'Bachelor of Science in Information Technology',
+            '9780134685991' => 'Bachelor of Science in Computer Science', '9780553380163' => 'Bachelor of Science in Computer Science',
+            '9780743273565' => 'Bachelor of Arts in Communication', '9780141439518' => 'Bachelor of Arts in Communication',
+            '9780061120084' => 'Bachelor of Science in Education', '9780062316097' => 'Bachelor of Science in Education',
         ];
         foreach ($courses as $isbn => $course) {
             $books->update($bookIds[$isbn], ['course' => $course]);
@@ -143,11 +142,6 @@ class LibrarySeeder extends Seeder
                 ]);
             }
         }
-
-        // Reservations: one waiting in the queue, one ready at the desk.
-        $reservations = new ReservationModel();
-        $reservations->insert(['book_id' => $bookIds['9780596517748'], 'user_id' => $userIds['2024-00001'], 'status' => 'pending', 'reserved_at' => $day(-1)]);
-        $reservations->insert(['book_id' => $bookIds['9780062316097'], 'user_id' => $userIds['2024-00002'], 'status' => 'ready', 'reserved_at' => $day(-2), 'ready_at' => $day(-1), 'expires_at' => $day(1)]);
 
         // Turn the sample history above into Activity Log entries.
         $this->call('ActivityBackfillSeeder');

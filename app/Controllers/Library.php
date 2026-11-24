@@ -38,7 +38,6 @@ class Library extends BaseController
     public function index()
     {
         $service = new CirculationService();
-        $service->housekeep();
 
         $tab = (string) $this->request->getGet('tab');
         $tab = in_array($tab, self::TABS, true) ? $tab : 'all';
@@ -61,6 +60,8 @@ class Library extends BaseController
             // For the "Issue book" dialog.
             'students'   => (new UserModel())->where('role', UserModel::STUDENT)->activeBorrowers(),
             'bookList'   => (new BookModel())->forSelect(),
+            // For the "Update Stock" dialog (Head Librarian), available on every tab.
+            'allBooks'   => is_head() ? (new BookModel())->forSelect() : [],
         ];
 
         if ($tab === 'collections' || $tab === 'books') {
@@ -94,7 +95,6 @@ class Library extends BaseController
                 $data['log']      = $log->paginate(10, 'history');
                 $data['logPager'] = $log->pager;
                 $data['stats']    = (new BookModel())->stats();
-                $data['allBooks'] = is_head() ? (new BookModel())->forSelect() : [];
             }
         } else {
             $status = ['all' => 'all', 'borrowed' => 'active', 'overdue' => 'overdue', 'returned' => 'returned', 'lost' => 'lost'][$tab];

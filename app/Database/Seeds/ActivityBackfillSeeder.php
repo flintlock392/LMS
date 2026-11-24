@@ -8,7 +8,7 @@ use CodeIgniter\Database\Seeder;
 
 /**
  * Builds Activity Log entries from records that existed before the log did
- * (loans, returns, fines, reservations, inventory changes, accounts).
+ * (loans, returns, fines, inventory changes, accounts).
  * Safe to run more than once: it does nothing if the log already has entries.
  *
  * Run:  php spark db:seed ActivityBackfillSeeder
@@ -64,17 +64,6 @@ class ActivityBackfillSeeder extends Seeder
                 $add($f['paid_at'], (int) $f['processed_by'], 'fine', 'paid', 'Recorded payment of ' . $amount . ' from ' . $f['name'] . ' (' . $f['id_number'] . ')', 'fine', (int) $f['id']);
             } elseif ($f['status'] === 'waived') {
                 $add($f['updated_at'], (int) $f['processed_by'], 'fine', 'waived', 'Waived ' . $amount . ' fine for ' . $f['name'], 'fine', (int) $f['id']);
-            }
-        }
-
-        $res = $db->table('reservations r')->select('r.*, b.title, u.name')
-            ->join('books b', 'b.id = r.book_id')->join('users u', 'u.id = r.user_id')->get()->getResultArray();
-        foreach ($res as $r) {
-            $add($r['reserved_at'], (int) ($r['handled_by'] ?: $r['user_id']), 'reservation', 'placed', $r['name'] . ' reserved "' . $r['title'] . '"', 'reservation', (int) $r['id']);
-            $add($r['ready_at'], null, 'reservation', 'ready', 'System: a copy of "' . $r['title'] . '" is now held for ' . $r['name'], 'reservation', (int) $r['id']);
-            if (in_array($r['status'], ['cancelled', 'expired'], true)) {
-                $add($r['closed_at'], $r['status'] === 'cancelled' ? (int) $r['handled_by'] : null, 'reservation', $r['status'],
-                    $r['status'] === 'cancelled' ? 'Cancelled ' . $r['name'] . '\'s reservation for "' . $r['title'] . '"' : 'System: ' . $r['name'] . '\'s hold on "' . $r['title'] . '" expired', 'reservation', (int) $r['id']);
             }
         }
 

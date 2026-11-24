@@ -6,7 +6,7 @@ use CodeIgniter\Database\Migration;
 
 /**
  * Book titles. stock_count is the number of physical copies the library owns;
- * copies on loan or held for a reservation are subtracted to get "available".
+ * copies on loan are subtracted to get "available".
  */
 class CreateBooksTable extends Migration
 {

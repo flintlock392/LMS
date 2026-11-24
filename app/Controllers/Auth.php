@@ -74,7 +74,7 @@ class Auth extends BaseController
             ],
             'name'       => 'required|min_length[2]|max_length[100]',
             'email'      => ['rules' => 'required|valid_email|max_length[150]|is_unique[users.email]', 'errors' => ['is_unique' => 'That email is already registered.']],
-            'course'     => 'required|max_length[100]',
+            ...course_rules(),           // drop-down + "Other" text box
             'year_level' => 'required|max_length[20]',
             'password'   => 'required|min_length[8]|max_length[72]',
             'confirm'    => ['rules' => 'required|matches[password]', 'errors' => ['matches' => 'The passwords do not match.']],
@@ -87,7 +87,7 @@ class Auth extends BaseController
             'id_number'  => strtoupper(trim((string) $this->request->getPost('id_number'))),
             'name'       => trim((string) $this->request->getPost('name')),
             'email'      => strtolower(trim((string) $this->request->getPost('email'))),
-            'course'     => trim((string) $this->request->getPost('course')),
+            'course'     => posted_course(),
             'year_level' => (string) $this->request->getPost('year_level'),
             'password'   => (string) $this->request->getPost('password'),
             'role'       => UserModel::STUDENT,

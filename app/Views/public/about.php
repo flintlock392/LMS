@@ -9,12 +9,11 @@
             <div class="pub-panel h-100">
                 <p class="fs-5" style="font-family:var(--font-display)">A warm, quiet corner of campus where every student can find the book they need.</p>
                 <p>Our library serves students with a growing collection across programming, literature, science and history.
-                   Browse the catalog online, reserve titles that are out on loan, and pick them up at the desk when they're ready.</p>
+                   Browse the catalog online to see which titles are on the shelf, then borrow them at the circulation desk.</p>
                 <h2 class="h6 mt-4">Borrowing at a glance</h2>
                 <ul class="mb-0">
                     <li>Borrow up to <strong><?= (int) setting('max_loans') ?></strong> books at a time for <strong><?= (int) setting('loan_days') ?> days</strong>.</li>
                     <li>Late returns are charged <strong><?= money(setting('fine_per_day')) ?></strong> per day.</li>
-                    <li>Reserved books are held at the desk for <strong><?= (int) setting('hold_days') ?> day(s)</strong> once they're ready.</li>
                     <li>Log in with your <strong>student number</strong>. It also serves as your library card number.</li>
                 </ul>
             </div>

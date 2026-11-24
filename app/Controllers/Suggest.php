@@ -40,13 +40,12 @@ class Suggest extends BaseController
             'books'    => $this->books($q, 'all'),
             'students' => $this->students($q, 'all'),
             'staff'    => $this->staff($q),
-            // Fine Management follows its "Search by" choice.
-            'fines'    => match ((string) $this->request->getGet('by')) {
-                'student_no' => $this->students($q, 'fines', 'student_no'),
-                'name'       => $this->students($q, 'fines', 'name'),
-                'book'       => $this->books($q, 'fines'),
-                default      => array_merge($this->students($q, 'fines'), $this->books($q, 'fines')),
-            },
+            // Fine Management: typing something that looks like a student number
+            // (starts with a digit, e.g. "2024-0") suggests student numbers first;
+            // otherwise students by name plus book titles.
+            'fines'    => preg_match('/^\d/', $q)
+                ? $this->students($q, 'fines', 'student_no')
+                : array_merge($this->students($q, 'fines', 'name'), $this->books($q, 'fines')),
             // Active students only (used by pickers such as "Add a fine").
             'borrowers' => $this->students($q, 'active'),
             default    => [],
@@ -102,7 +101,7 @@ class Suggest extends BaseController
             'sub'   => ($match === 'student_no' ? $u['name'] : $u['id_number']) . ($u['course'] ? ' · ' . $u['course'] : '')
                 . (isset($u['unpaid']) && (float) $u['unpaid'] > 0 ? ' · owes ' . money($u['unpaid']) : '')
                 . ($u['status'] !== 'active' ? ' · suspended' : ''),
-            'value' => $match === 'name' ? $u['name'] : $u['id_number'],
+            'value' => $u['id_number'],   // a student number matches exactly one student
             'pick'  => $u['name'] . ' (' . $u['id_number'] . ')',
         ], $rows);
     }

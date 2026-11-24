@@ -6,7 +6,7 @@ use CodeIgniter\Database\Migration;
 
 /**
  * The course (program) a book is meant for, e.g. "BS Information Technology".
- * Empty = a general book for every course. Used to filter books when reserving.
+ * Empty = a general book for every course.
  */
 class AddCourseToBooks extends Migration
 {

@@ -25,6 +25,42 @@ if (! function_exists('pager_info')) {
     }
 }
 
+if (! function_exists('course_rules')) {
+    /** Validation for the Course / Program drop-down (and its "Other" text box). */
+    function course_rules(): array
+    {
+        $rules = [
+            'course' => [
+                'label'  => 'Course / Program',
+                'rules'  => 'required|in_list[' . implode(',', array_merge(UserModel::COURSES, [UserModel::OTHER_COURSE])) . ']',
+                'errors' => ['required' => 'Choose a course / program.', 'in_list' => 'Choose a course from the list, or "Other".'],
+            ],
+        ];
+        if (service('request')->getPost('course') === UserModel::OTHER_COURSE) {
+            $rules['course_other'] = [
+                'label'  => 'Other course',
+                'rules'  => 'required|min_length[2]|max_length[100]',
+                'errors' => ['required' => 'Type the course name for "Other".'],
+            ];
+        }
+
+        return $rules;
+    }
+}
+
+if (! function_exists('posted_course')) {
+    /** The course to save: the chosen option, or the typed text when "Other" was chosen. */
+    function posted_course(): string
+    {
+        $request = service('request');
+        $choice  = (string) $request->getPost('course');
+
+        return $choice === UserModel::OTHER_COURSE
+            ? trim(preg_replace('/\s+/', ' ', (string) $request->getPost('course_other')) ?? '')
+            : $choice;
+    }
+}
+
 if (! function_exists('course_options')) {
     /** Every course in use: students' programs plus courses books are tagged with (A–Z). */
     function course_options(): array
@@ -139,7 +175,7 @@ if (! function_exists('fmt_date')) {
 }
 
 if (! function_exists('status_badge')) {
-    /** Coloured pill for loan, reservation, fine and account statuses. */
+    /** Coloured pill for loan, fine and account statuses. */
     function status_badge(string $status, ?string $dueDate = null): string
     {
         if ($status === 'borrowed' && $dueDate !== null && $dueDate < date('Y-m-d')) {
@@ -151,11 +187,6 @@ if (! function_exists('status_badge')) {
             'overdue'   => ['danger', 'Overdue'],
             'returned'  => ['success', 'Returned'],
             'lost'      => ['dark', 'Lost'],
-            'pending'   => ['warning', 'In queue'],
-            'ready'     => ['success', 'Ready for pickup'],
-            'fulfilled' => ['secondary', 'Fulfilled'],
-            'cancelled' => ['secondary', 'Cancelled'],
-            'expired'   => ['secondary', 'Expired'],
             'unpaid'    => ['danger', 'Unpaid'],
             'paid'      => ['success', 'Paid'],
             'waived'    => ['secondary', 'Waived'],
@@ -232,7 +263,6 @@ if (! function_exists('nav_items')) {
             UserModel::HEAD => [
                 ['Dashboard', 'speedometer2', 'dashboard'],
                 ['Library', 'book', 'library', $collection],
-                ['Reservations', 'bookmark-check', 'reservations'],
                 ['User Management', 'people', 'members', ['members', 'staff']],
                 ['Fine Management', 'cash-coin', 'fines'],
                 ['Reports & Analytics', 'bar-chart-line', 'reports'],
@@ -241,7 +271,6 @@ if (! function_exists('nav_items')) {
             UserModel::LIBRARIAN => [
                 ['Dashboard', 'speedometer2', 'dashboard'],
                 ['Library', 'book', 'library', $collection],
-                ['Reservations', 'bookmark-check', 'reservations'],
                 ['User Registration', 'person-plus', 'members'],
                 ['Fine Processing', 'cash-coin', 'fines'],
                 ['Reports', 'file-earmark-bar-graph', 'reports'],
@@ -250,7 +279,6 @@ if (! function_exists('nav_items')) {
                 ['Dashboard', 'speedometer2', 'dashboard'],
                 ['Browse Books', 'search', 'catalog'],
                 ['My Loans', 'journal-bookmark', 'my/loans'],
-                ['My Reservations', 'bookmark-check', 'my/reservations'],
                 ['My Fines', 'cash-coin', 'my/fines'],
             ],
             default => [],

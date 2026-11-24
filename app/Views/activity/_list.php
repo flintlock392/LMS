@@ -9,7 +9,6 @@ $links = [
     'book'        => 'books/',
     'user'        => 'members/',
     'borrowing'   => null,
-    'reservation' => null,
 ];
 ?>
 <?php if (! $rows): ?>

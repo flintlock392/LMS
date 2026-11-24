@@ -25,7 +25,6 @@ class Settings extends BaseController
         }
         $rules['loan_days']['rules']        = 'required|is_natural_no_zero|less_than_equal_to[365]';
         $rules['max_loans']['rules']        = 'required|is_natural_no_zero|less_than_equal_to[50]';
-        $rules['hold_days']['rules']        = 'required|is_natural_no_zero|less_than_equal_to[30]';
 
         if (! $this->validate($rules)) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());

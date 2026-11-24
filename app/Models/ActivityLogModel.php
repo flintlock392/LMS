@@ -9,7 +9,6 @@ class ActivityLogModel extends Model
     /** category => [label, bootstrap-icon] */
     public const CATEGORIES = [
         'circulation' => ['Borrowing & returns', 'arrow-left-right'],
-        'reservation' => ['Reservations', 'bookmark-check'],
         'inventory'   => ['Inventory', 'box-seam'],
         'book'        => ['Books & categories', 'book'],
         'fine'        => ['Fines', 'cash-coin'],

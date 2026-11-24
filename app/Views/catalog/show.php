@@ -10,7 +10,6 @@
     <p class="text-muted">by <?= esc($book['author']) ?></p>
     <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
         <?= availability_badge((int) $book['available'], (int) $book['stock_count']) ?>
-        <?php if ((int) $book['queued'] > 0): ?><span class="small text-muted"><?= (int) $book['queued'] ?> student(s) waiting</span><?php endif; ?>
         <div class="ms-auto"><?= view('catalog/_action', ['book' => $book, 'mine' => $mine]) ?></div>
     </div>
     <dl class="row small mb-0">

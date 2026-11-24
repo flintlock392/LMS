@@ -38,7 +38,6 @@
         ['Returned late', $summary['late_returns'], 'alarm', 'warn'],
         ['Reported lost', $summary['lost'], 'question-octagon', 'bad'],
         ['Students who borrowed', $summary['borrowers'], 'people', ''],
-        ['Reservations placed', $summary['reservations'], 'bookmark-plus', ''],
         ['Fines charged', money($summary['fines_charged']), 'receipt', 'warn'],
         ['Fines collected', money($summary['fines_paid']), 'cash-stack', 'good'],
     ] as [$label, $value, $icon, $tone]): ?>

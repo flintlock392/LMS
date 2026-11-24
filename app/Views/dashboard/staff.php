@@ -18,9 +18,9 @@
         </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <a class="stat" href="<?= site_url('reservations?status=ready') ?>">
-            <span class="icon good"><i class="bi bi-bookmark-check"></i></span>
-            <span><span class="value d-block"><?= $resCounts['ready'] ?></span><span class="label">Ready for pickup · <?= $resCounts['pending'] ?> in queue</span></span>
+        <a class="stat" href="<?= site_url('library?tab=books') ?>">
+            <span class="icon good"><i class="bi bi-check2-circle"></i></span>
+            <span><span class="value d-block"><?= $bookStats['available'] ?></span><span class="label">Copies on the shelf</span></span>
         </a>
     </div>
     <div class="col-sm-6 col-xl-3">
@@ -133,24 +133,6 @@
 
     <div class="col-xl-5">
         <div class="panel">
-            <h2 class="panel-title"><i class="bi bi-bookmark-check text-success"></i> Waiting for pickup
-                <a class="ms-auto small" href="<?= site_url('reservations') ?>">Reservations</a></h2>
-            <?php if (! $pickups): ?>
-                <div class="empty"><i class="bi bi-inbox"></i>No books are being held.</div>
-            <?php else: ?>
-                <ul class="list-unstyled mb-0">
-                    <?php foreach ($pickups as $r): ?>
-                        <li class="d-flex justify-content-between align-items-start py-2 border-bottom">
-                            <span><strong class="d-block"><?= esc($r['title']) ?></strong>
-                                <span class="sub small text-muted"><?= esc($r['borrower_name']) ?> · <?= esc($r['borrower_id_number']) ?></span></span>
-                            <span class="small text-muted text-end">Hold until<br><?= fmt_date($r['expires_at']) ?></span>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </div>
-
-        <div class="panel">
             <h2 class="panel-title"><i class="bi bi-calendar-event text-warning"></i> Due in the next 2 days</h2>
             <?php if (! $dueSoon): ?>
                 <div class="empty"><i class="bi bi-inbox"></i>No books are due soon.</div>
@@ -176,7 +158,7 @@
                     <?php foreach ($lowStock as $b): ?>
                         <li class="d-flex justify-content-between py-2 border-bottom">
                             <span><?= esc($b['title']) ?></span>
-                            <span class="small text-muted"><?= (int) $b['on_loan'] ?> on loan<?= $b['queued'] ? ' · ' . (int) $b['queued'] . ' waiting' : '' ?></span>
+                            <span class="small text-muted"><?= (int) $b['on_loan'] ?> on loan</span>
                         </li>
                     <?php endforeach; ?>
                 </ul>

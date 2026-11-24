@@ -26,7 +26,6 @@ class Reports extends BaseController
             'returned'      => (int) $one("SELECT COUNT(*) v FROM borrowings WHERE status = 'returned' AND returned_at BETWEEN ? AND ?", [$start, $end]),
             'late_returns'  => (int) $one("SELECT COUNT(*) v FROM borrowings WHERE status = 'returned' AND returned_at BETWEEN ? AND ? AND DATE(returned_at) > due_date", [$start, $end]),
             'lost'          => (int) $one("SELECT COUNT(*) v FROM borrowings WHERE status = 'lost' AND returned_at BETWEEN ? AND ?", [$start, $end]),
-            'reservations'  => (int) $one('SELECT COUNT(*) v FROM reservations WHERE reserved_at BETWEEN ? AND ?', [$start, $end]),
             'new_students'  => (int) $one("SELECT COUNT(*) v FROM users WHERE role = 'student' AND created_at BETWEEN ? AND ?", [$start, $end]),
             'fines_charged' => $one('SELECT COALESCE(SUM(amount),0) v FROM fines WHERE created_at BETWEEN ? AND ?', [$start, $end]),
             'fines_paid'    => $one("SELECT COALESCE(SUM(amount),0) v FROM fines WHERE status = 'paid' AND paid_at BETWEEN ? AND ?", [$start, $end]),
@@ -138,10 +137,10 @@ class Reports extends BaseController
                 )->getResultArray();
                 break;
             case 'inventory':
-                $header = ['Title', 'ISBN', 'Author', 'Category', 'Shelf', 'Owned', 'On loan', 'On hold', 'Available'];
+                $header = ['Title', 'ISBN', 'Author', 'Category', 'Shelf', 'Owned', 'On loan', 'Available'];
                 $rows   = array_map(static fn ($b) => [
                     $b['title'], $b['isbn'], $b['author'], $b['category_name'], $b['shelf_location'],
-                    $b['stock_count'], $b['on_loan'], $b['on_hold'], $b['available'],
+                    $b['stock_count'], $b['on_loan'], $b['available'],
                 ], (new BookModel())->withAvailability()->orderBy('books.title')->findAll());
                 break;
             case 'students':

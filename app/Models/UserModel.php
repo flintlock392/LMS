@@ -13,6 +13,15 @@ class UserModel extends Model
     public const ROLES       = [self::HEAD, self::LIBRARIAN, self::STUDENT];
     public const STAFF_ROLES = [self::HEAD, self::LIBRARIAN];
 
+    /** Courses offered in the "Course / Program" drop-down. Anything else is typed in via "Other". */
+    public const COURSES = [
+        'Bachelor of Science in Information Technology',
+        'Bachelor of Science in Computer Science',
+        'Bachelor of Science in Education',
+        'Bachelor of Science in Hospitality Management',
+    ];
+    public const OTHER_COURSE = '__other';
+
     public const ROLE_LABELS = [
         self::HEAD      => 'Head Librarian',
         self::LIBRARIAN => 'Librarian Staff',

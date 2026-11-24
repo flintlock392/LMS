@@ -18,8 +18,6 @@ class SettingModel extends Model
         'max_overdue_fine'   => ['Max overdue fine per book', '200.00', 'money', 'Cap on a single overdue fine. 0 = no cap.'],
         'lost_book_fee'      => ['Lost book fee', '500.00', 'money', 'Charged when a borrowed book is reported lost.'],
         'damaged_book_fee'   => ['Damaged book fee', '150.00', 'money', 'Default charge when a book comes back damaged.'],
-        'max_reservations'   => ['Max active reservations', '3', 'int', 'Pending or ready reservations per student.'],
-        'hold_days'          => ['Reservation hold (days)', '2', 'int', 'How long a ready book is held at the desk.'],
         'block_unpaid_fines' => ['Block borrowing with unpaid fines', '1', 'bool', 'Students with unpaid fines cannot borrow.'],
         'currency'           => ['Currency symbol', '₱', 'text', 'Used when showing fines.'],
     ];

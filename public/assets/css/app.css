@@ -279,7 +279,7 @@ a.stat:hover { border-color: var(--cream-300); box-shadow: 0 4px 12px rgba(85,52
 .filter-summary a { margin-left: auto; }
 
 /* Suggestive search on filter boxes (assets/js/suggest.js) */
-.suggest-wrap { position: relative; display: inline-block; }
+.suggest-wrap { position: relative; display: block; }
 .filters .suggest-wrap { flex: 0 1 260px; }
 .filters .suggest-wrap .form-control, .date-range .suggest-wrap .form-control { width: 100%; max-width: none; }
 .suggest-wrap .suggest-list { min-width: 300px; }
@@ -307,6 +307,14 @@ a.stat:hover { border-color: var(--cream-300); box-shadow: 0 4px 12px rgba(85,52
     display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 600;
 }
 .student-chip { background: var(--cream-100); border-radius: 10px; padding: .5rem .75rem; font-size: .82rem; line-height: 1.5; }
+
+/* Update Stock → "Adjust copies" dialog */
+.adjust-modal { background: #fdf8ef; border: 1px solid #ecdcc4; border-radius: 16px; }
+.adjust-modal .modal-header { padding: 1.1rem 1.25rem 0; }
+.adjust-modal .modal-body { padding: 1rem 1.25rem 1.25rem; }
+.adjust-modal .btn-group .btn { border-radius: 0; }
+.adjust-modal .btn-group .btn:first-of-type { border-radius: 6px 0 0 6px; }
+.adjust-modal .btn-group .btn:last-of-type { border-radius: 0 6px 6px 0; }
 
 /* Books tab → Stock history */
 .history-card { border: 1px solid #ecdcc4; border-radius: var(--radius); padding: 1.1rem 1.25rem; background: #fffdf9; }

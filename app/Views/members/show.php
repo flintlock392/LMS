@@ -33,14 +33,6 @@
                 </div>
             <?php endif; ?>
         </div>
-        <div class="panel">
-            <h3 class="panel-title"><i class="bi bi-bookmark-check"></i> Open reservations</h3>
-            <?php if (! $reservations): ?><p class="small text-muted mb-0">None.</p><?php else: ?>
-                <ul class="list-unstyled small mb-0"><?php foreach ($reservations as $r): ?>
-                    <li class="d-flex justify-content-between py-1"><?= esc($r['title']) ?> <?= status_badge($r['status']) ?></li>
-                <?php endforeach; ?></ul>
-            <?php endif; ?>
-        </div>
     </div>
     <div class="col-lg-8">
         <div class="panel">

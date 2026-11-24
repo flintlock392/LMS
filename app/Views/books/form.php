@@ -46,7 +46,7 @@
                 <input class="form-control" id="course" name="course" list="course-list" maxlength="100"
                        value="<?= esc(old('course', $book['course'] ?? '', false)) ?>" placeholder="Leave empty for general reading (all courses)">
                 <datalist id="course-list"><?php foreach (course_options() as $c): ?><option value="<?= esc($c) ?>"><?php endforeach; ?></datalist>
-                <div class="form-text">The program this book is meant for, e.g. BS Information Technology. Used to filter books when reserving.</div>
+                <div class="form-text">The program this book is meant for, e.g. BS Information Technology. Helps students and staff find books for each course.</div>
             </div>
             <?php if (! $editing): ?>
                 <div class="col-md-4">

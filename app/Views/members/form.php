@@ -26,8 +26,7 @@
                 <input class="form-control" id="phone" name="phone" value="<?= esc(old('phone', $user['phone'] ?? '', false)) ?>" maxlength="30">
             </div>
             <div class="col-md-7">
-                <label class="form-label" for="course">Course / Program *</label>
-                <input class="form-control" id="course" name="course" value="<?= esc(old('course', $user['course'] ?? '', false)) ?>" required maxlength="100">
+                <?= view('partials/course_field', ['current' => (string) ($user['course'] ?? '')]) ?>
             </div>
             <div class="col-md-5">
                 <label class="form-label" for="year_level">Year level *</label>

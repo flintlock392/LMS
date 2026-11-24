@@ -2,17 +2,14 @@
 
 namespace App\Controllers;
 
-use App\Libraries\Circulation as CirculationService;
 use App\Models\BookModel;
 use App\Models\BorrowingModel;
 use App\Models\CategoryModel;
-use App\Models\ReservationModel;
 use App\Models\UserModel;
-use RuntimeException;
 
 /**
  * "Books" in the public menu and "Browse Books" for students.
- * Visitors can browse; logged-in students can also reserve.
+ * Anyone can browse and see which titles are on the shelf; books are borrowed at the desk.
  */
 class Catalog extends BaseController
 {
@@ -32,7 +29,7 @@ class Catalog extends BaseController
             'filters'    => $filters,
             'categories' => (new CategoryModel())->orderBy('name')->findAll(),
             'layout'     => $this->layout(),
-            'mine'       => $this->myOpenBookIds(),
+            'mine'       => $this->myLoans(),
         ]);
     }
 
@@ -43,21 +40,7 @@ class Catalog extends BaseController
             return redirect()->to('/catalog')->with('error', 'Book not found.');
         }
 
-        return view('catalog/show', ['book' => $book, 'layout' => $this->layout(), 'mine' => $this->myOpenBookIds()]);
-    }
-
-    /** Students only (route filter). */
-    public function reserve(int $id)
-    {
-        try {
-            $r = (new CirculationService())->reserve($id, (int) session()->get('userId'), (int) session()->get('userId'));
-        } catch (RuntimeException $e) {
-            return redirect()->back()->with('error', $e->getMessage());
-        }
-
-        return redirect()->to('/my/reservations')->with('success', $r['status'] === 'ready'
-            ? 'Reserved! A copy is waiting for you at the desk. Pick it up by ' . fmt_date($r['expires_at'], true) . '.'
-            : 'Reserved! You\'ll see "Ready for pickup" here when a copy comes back.');
+        return view('catalog/show', ['book' => $book, 'layout' => $this->layout(), 'mine' => $this->myLoans()]);
     }
 
     private function layout(): string
@@ -65,19 +48,15 @@ class Catalog extends BaseController
         return current_role() === UserModel::STUDENT ? 'layouts/app' : 'layouts/public';
     }
 
-    /** book_id => 'loan' | 'pending' | 'ready' for the logged-in student. */
-    private function myOpenBookIds(): array
+    /** book_id => true for books the logged-in student currently has on loan. */
+    private function myLoans(): array
     {
         if (current_role() !== UserModel::STUDENT) {
             return [];
         }
-        $userId = (int) session()->get('userId');
-        $out    = [];
-        foreach ((new ReservationModel())->where('user_id', $userId)->whereIn('status', ReservationModel::OPEN)->findAll() as $r) {
-            $out[(int) $r['book_id']] = $r['status'];
-        }
-        foreach ((new BorrowingModel())->where('user_id', $userId)->where('status', 'borrowed')->findAll() as $l) {
-            $out[(int) $l['book_id']] = 'loan';
+        $out = [];
+        foreach ((new BorrowingModel())->where('user_id', (int) session()->get('userId'))->where('status', 'borrowed')->findAll() as $l) {
+            $out[(int) $l['book_id']] = true;
         }
 
         return $out;

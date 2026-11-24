@@ -21,29 +21,21 @@
             <form class="date-range mb-3" method="get">
                 <input type="hidden" name="status" value="<?= esc($filters['status']) ?>">
                 <div class="field">
-                    <label for="by">Search by</label>
-                    <select class="form-select form-select-sm" id="by" name="by">
-                        <?php foreach (\App\Controllers\Fines::SEARCH_BY as $key => [$label, $placeholder]): ?>
-                            <option value="<?= $key ?>" data-placeholder="<?= esc($placeholder) ?>" <?= $filters['by'] === $key ? 'selected' : '' ?>><?= $label ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="field">
                     <label for="fine-q">Search</label>
                     <input class="form-control form-control-sm" type="search" id="fine-q" name="q" value="<?= esc($filters['q']) ?>"
-                           placeholder="<?= esc(\App\Controllers\Fines::SEARCH_BY[$filters['by']][1]) ?>"
-                           data-suggest="fines" data-suggest-by="by" style="width:240px">
+                           placeholder="Student number, name, or book title"
+                           data-suggest="fines" style="width:320px" aria-describedby="fine-q-help">
                 </div>
                 <button class="btn btn-sm btn-nook"><i class="bi bi-search me-1"></i>Search</button>
                 <?php if ($filters['q'] !== ''): ?>
                     <a class="btn btn-sm btn-link" href="<?= site_url('fines?status=' . $filters['status']) ?>">Clear</a>
                 <?php endif; ?>
             </form>
+            <p id="fine-q-help" class="form-text mt-n2 mb-3">Type a <strong>student number</strong> (e.g. 2024-00005), a student's name, or a book title. Matching students and books are suggested as you type.</p>
             <?php if ($filters['q'] !== ''): ?>
                 <div class="filter-summary"><i class="bi bi-funnel"></i>
-                    <span>Showing <?= $filters['status'] === 'all' ? 'all' : esc($filters['status']) ?> fines where
-                        <strong><?= esc(strtolower(\App\Controllers\Fines::SEARCH_BY[$filters['by']][0] === 'Everything' ? 'student name, number or book' : \App\Controllers\Fines::SEARCH_BY[$filters['by']][0])) ?></strong>
-                        contains "<?= esc($filters['q']) ?>" · <?= $pager->getTotal() ?> result(s)</span></div>
+                    <span>Showing <?= $filters['status'] === 'all' ? 'all' : esc($filters['status']) ?> fines matching
+                        "<?= esc($filters['q']) ?>" (student number, name or book) · <?= $pager->getTotal() ?> result(s)</span></div>
             <?php endif; ?>
             <?php if (! $rows): ?>
                 <div class="empty"><i class="bi bi-emoji-smile"></i>No fines to show.</div>
