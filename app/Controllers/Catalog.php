@@ -47,6 +47,34 @@ class Catalog extends BaseController
         return view('catalog/show', ['book' => $book, 'layout' => $this->layout(), 'mine' => $this->myLoans()]);
     }
 
+    /**
+     * Suggestions for the Browse Books search box (anyone can browse the catalog).
+     * GET catalog/suggest?q=clean → [{type, label, sub, value}] (max 8)
+     */
+    public function suggest()
+    {
+        $q = trim((string) $this->request->getGet('q'));
+        if ($q === '' || mb_strlen($q) > 100) {
+            return $this->response->setJSON([]);
+        }
+
+        $db   = db_connect();
+        $like = $db->escape($db->escapeLikeString($q) . '%');
+        $rows = $db->table('books')
+            ->select('title, author, isbn')
+            ->groupStart()->like('title', $q)->orLike('author', $q)->orLike('isbn', str_replace('-', '', $q))->groupEnd()
+            ->orderBy('(title LIKE ' . $like . ' OR author LIKE ' . $like . ')', 'DESC', false)   // "starts with" first
+            ->orderBy('title')
+            ->limit(8)->get()->getResultArray();
+
+        return $this->response->setJSON(array_map(static fn ($b) => [
+            'type'  => 'book',
+            'label' => $b['title'],
+            'sub'   => $b['author'] . ' · ISBN ' . $b['isbn'],
+            'value' => $b['title'],
+        ], $rows));
+    }
+
     /** Students only (route filter): "Request to borrow". Staff approve it in Library → Requested. */
     public function request(int $id)
     {

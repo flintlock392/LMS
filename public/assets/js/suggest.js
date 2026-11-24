@@ -13,12 +13,13 @@
  *                                  and use its option's data-placeholder as the box's placeholder.
  *   data-suggest-pick="hiddenId"   pick mode: choosing a suggestion stores its id in that hidden input
  *                                  (instead of submitting); the form can't be sent until one is chosen.
+ *   data-suggest-url="…"           ask this address instead of <body data-suggest-url> (e.g. the public catalog).
  */
 (function () {
     'use strict';
 
-    const endpoint = document.body.dataset.suggestUrl;
-    if (!endpoint) { return; }
+    // Address for suggestions: the box's own data-suggest-url, or the page's <body data-suggest-url>.
+    const defaultEndpoint = document.body.dataset.suggestUrl || '';
 
     const ICONS = { student: 'mortarboard', staff: 'person-badge', book: 'book' };
     const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -29,6 +30,8 @@
 
     document.querySelectorAll('input[data-suggest]').forEach(function (input, n) {
         const scope = input.dataset.suggest;
+        const endpoint = input.dataset.suggestUrl || defaultEndpoint;
+        if (!endpoint) { return; }
         const form = input.form;
         const bySelect = input.dataset.suggestBy ? document.getElementById(input.dataset.suggestBy) : null;
         const pickInput = input.dataset.suggestPick ? document.getElementById(input.dataset.suggestPick) : null;

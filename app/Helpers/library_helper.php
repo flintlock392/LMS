@@ -8,6 +8,19 @@
 use App\Models\SettingModel;
 use App\Models\UserModel;
 
+if (! function_exists('asset')) {
+    /**
+     * URL of a file in public/ with "?v=<last modified time>", so browsers load the
+     * new version right after a change instead of an old cached copy.
+     */
+    function asset(string $path): string
+    {
+        $file = FCPATH . ltrim($path, '/');
+
+        return base_url($path) . (is_file($file) ? '?v=' . filemtime($file) : '');
+    }
+}
+
 if (! function_exists('pager_info')) {
     /** "Showing 11–20 of 51" for a paginated list. */
     function pager_info(\CodeIgniter\Pager\Pager $pager, string $group = 'default', string $noun = 'entries'): string

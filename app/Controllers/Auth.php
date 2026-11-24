@@ -52,52 +52,6 @@ class Auth extends BaseController
         return redirect()->to('/dashboard')->with('success', 'Welcome back, ' . $user['name'] . '! You are signed in as ' . role_label($user['role']) . '.');
     }
 
-    public function signup()
-    {
-        if (session()->get('isLoggedIn')) {
-            return redirect()->to('/dashboard');
-        }
-
-        return view('auth/signup');
-    }
-
-    /** Public sign-up always creates a Student account. Staff accounts are made by the Head Librarian. */
-    public function store()
-    {
-        $rules = [
-            'id_number'  => [
-                'rules'  => 'required|regex_match[/^[A-Za-z0-9-]{4,30}$/]|is_unique[users.id_number]',
-                'errors' => [
-                    'regex_match' => 'Student number may only contain letters, numbers and dashes.',
-                    'is_unique'   => 'That student number is already registered.',
-                ],
-            ],
-            'name'       => 'required|min_length[2]|max_length[100]',
-            'email'      => ['rules' => 'required|valid_email|max_length[150]|is_unique[users.email]', 'errors' => ['is_unique' => 'That email is already registered.']],
-            ...course_rules(),           // drop-down + "Other" text box
-            'year_level' => 'required|max_length[20]',
-            'password'   => 'required|min_length[8]|max_length[72]',
-            'confirm'    => ['rules' => 'required|matches[password]', 'errors' => ['matches' => 'The passwords do not match.']],
-        ];
-        if (! $this->validate($rules)) {
-            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
-        }
-
-        $newId = (int) (new UserModel())->insert([
-            'id_number'  => strtoupper(trim((string) $this->request->getPost('id_number'))),
-            'name'       => trim((string) $this->request->getPost('name')),
-            'email'      => strtolower(trim((string) $this->request->getPost('email'))),
-            'course'     => posted_course(),
-            'year_level' => (string) $this->request->getPost('year_level'),
-            'password'   => (string) $this->request->getPost('password'),
-            'role'       => UserModel::STUDENT,
-            'status'     => 'active',
-        ], true);
-        log_activity('user', 'signed_up', trim((string) $this->request->getPost('name')) . ' (' . strtoupper(trim((string) $this->request->getPost('id_number'))) . ') created a student account online', 'user', $newId, $newId);
-
-        return redirect()->to('/login')->with('success', 'Account created! Log in with your student number.');
-    }
-
     public function forgot()
     {
         return view('auth/forgot');

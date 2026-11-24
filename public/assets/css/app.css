@@ -67,53 +67,56 @@ a:hover { color: var(--brown-900); }
     display: flex; flex-direction: column;
 }
 .public-nav { padding: 1.25rem 0; }
-.public-nav .brand img { width: 64px; height: 64px; border-radius: 50%; background: #fbf3e6; object-fit: contain; }
+.public-nav .brand img { width: 72px; height: 72px; border-radius: 50%; background: #fbf3e6; object-fit: contain; }
+/* Home | Books | About Us — beside the logo, separated by thin vertical lines */
+.pub-links { display: flex; align-items: center; flex-wrap: wrap; margin-left: .75rem; }
 .public-nav .nav-link-pub {
-    color: #f6e9da; text-decoration: none; font-size: 1.15rem; padding: .25rem .9rem;
-    border-bottom: 2px solid transparent;
+    color: #f6e9da; text-decoration: none; font-size: 1.3rem; padding: .1rem 1rem; line-height: 1.6;
+    border-left: 1.5px solid #c9b2a1;
 }
-.public-nav .nav-link-pub:hover, .public-nav .nav-link-pub.active { border-bottom-color: var(--cream-300); color: #fff; }
-.public-nav .divider { width: 1px; height: 32px; background: #c9b2a1; margin: 0 .75rem; }
+.public-nav .nav-link-pub:first-child { border-left: 0; }
+.public-nav .nav-link-pub:hover { color: #fff; text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 1px; }
+.public-nav .nav-link-pub.active { color: #fff; font-weight: 500; }
 .btn-pub-login {
     border: 1.5px solid #f6e9da; color: #f6e9da; border-radius: 999px; padding: .2rem 1.3rem; text-decoration: none;
 }
 .btn-pub-login:hover { background: #f6e9da; color: var(--brown-700); }
-.btn-pub-signup {
-    background: var(--blue); color: #fff; border-radius: 999px; padding: .25rem 1.3rem; text-decoration: none; margin-left: .75rem;
-}
-.btn-pub-signup:hover { background: #2f4b63; color: #fff; }
 .public-main { flex: 1; }
 .public-footer { color: #c9b2a1; font-size: .85rem; padding: 1.5rem 0; }
 
-.hero { padding: 1rem 0 3rem; }
+.hero { padding: 1.5rem 0 2rem; }
 .hero-title {
     font-family: var(--font-display); font-weight: 400; color: #f6e9da;
-    font-size: clamp(3rem, 7vw, 4.6rem); line-height: 1; margin: 0;
+    font-size: clamp(3.5rem, 8vw, 6rem); line-height: .9; margin: 0;
 }
 .hero-sub {
-    font-family: var(--font-display); color: #f6e9da; font-size: clamp(1.4rem, 2.5vw, 1.9rem);
-    line-height: 1.1; margin: .25rem 0 0 .6rem;
+    font-family: var(--font-display); color: #f6e9da; font-size: clamp(1.5rem, 2.8vw, 2.2rem);
+    line-height: 1.05; margin: .1rem 0 0 1rem; position: relative; z-index: 1;
 }
+/* The book stack rises up under "knowledge", as in the design */
 .hero-art {
-    width: min(100%, 600px); height: auto; display: block; margin-top: -.5rem;
+    width: min(100%, 680px); height: auto; display: block; margin-top: -2.5rem;
     filter: drop-shadow(0 18px 24px rgba(30, 16, 12, .35));
 }
 
+/* Login card: cream card with a dark-brown inner border */
 .login-card {
-    background: var(--cream-100); color: var(--ink); border-radius: 18px;
-    padding: 2.25rem 2.75rem 1.75rem; box-shadow: 0 18px 40px rgba(0,0,0,.25);
+    background: var(--cream-100); color: var(--ink); border-radius: 20px; padding: .6rem;
+    box-shadow: 0 18px 40px rgba(0,0,0,.25);
 }
-.login-card h1 { font-weight: 500; font-size: 2.6rem; color: var(--brown-600); text-align: center; margin: 0; }
-.login-card .lead-sm { text-align: center; font-size: .8rem; color: var(--ink); margin-bottom: 1.6rem; }
-.login-card label { font-size: .8rem; margin-bottom: .2rem; }
+.login-card-inner { border: 3px solid var(--brown-700); border-radius: 14px; padding: 2rem 3.5rem 2.25rem; }
+.login-card h1 { font-weight: 500; font-size: 2.8rem; color: var(--brown-600); text-align: center; margin: 0; line-height: 1.1; }
+.login-card .lead-sm { text-align: center; font-size: .8rem; color: var(--ink); margin: .35rem 0 1.75rem; }
+.login-card label { font-size: .8rem; margin-bottom: .2rem; color: var(--ink); }
 .login-card .form-control {
-    background: var(--input-bg); border: 1px solid var(--input-bd); border-radius: 3px; font-size: .9rem; padding: .45rem .6rem;
+    background: #fff; border: 1px solid #8c7b70; border-radius: 3px; font-size: .9rem; padding: .45rem .6rem;
 }
-.login-card .form-control:focus { background: #f0f0f0; border-color: var(--brown-600); box-shadow: 0 0 0 .2rem rgba(90,51,41,.2); }
-.login-card .btn-nook { padding: .45rem 2.4rem; font-size: 1.05rem; }
-.login-card .small-links { font-size: .75rem; text-align: center; margin-top: .6rem; }
-.login-card .small-links a { color: var(--blue); text-decoration: none; }
-.login-card .small-links a:hover { text-decoration: underline; }
+.login-card .form-control::placeholder { color: #9b8d83; }
+.login-card .form-control:focus { border-color: var(--brown-600); box-shadow: 0 0 0 .2rem rgba(90,51,41,.18); }
+.login-card .btn-nook { padding: .5rem 0; width: 150px; font-size: 1.05rem; }
+.login-card .small-links { font-size: .75rem; text-align: center; margin: .75rem 0 0; }
+.login-card .small-links a { color: var(--brown-600); text-decoration: underline; text-underline-offset: 2px; }
+.login-card .small-links a:hover { color: var(--brown-900); }
 
 .pub-panel { background: var(--cream-100); color: var(--ink); border-radius: 18px; padding: 2rem; }
 .pub-heading { font-family: var(--font-display); color: #f6e9da; font-size: 2.8rem; }

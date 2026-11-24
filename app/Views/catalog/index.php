@@ -9,7 +9,8 @@ $public = $layout === 'layouts/public';
 <?php if ($public): ?><div class="container pb-5"><h1 class="pub-heading mb-3">Our books</h1><?= view('partials/flash') ?><div class="pub-panel"><?php else: ?><div class="panel"><?php endif; ?>
 
     <form class="filters" method="get">
-        <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($filters['q']) ?>" placeholder="Search title, author or ISBN" aria-label="Search">
+        <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($filters['q']) ?>" placeholder="Search title, author or ISBN" aria-label="Search books"
+               data-suggest="books" data-suggest-url="<?= site_url('catalog/suggest') ?>">
         <select class="form-select form-select-sm" name="category_id" aria-label="Category">
             <option value="">All categories</option>
             <?php foreach ($categories as $c): ?>
@@ -28,6 +29,9 @@ $public = $layout === 'layouts/public';
             <label class="form-check-label small" for="avail">Available now</label>
         </div>
         <button class="btn btn-sm btn-nook"><i class="bi bi-search"></i> Search</button>
+        <?php if ($filters['q'] !== '' || $filters['category_id'] !== '' || $filters['course'] !== '' || $filters['availability'] !== ''): ?>
+            <a class="btn btn-sm btn-outline-nook" href="<?= site_url('catalog') ?>"><i class="bi bi-x-lg me-1"></i>Clear</a>
+        <?php endif; ?>
     </form>
 
     <?php if (! $books): ?>

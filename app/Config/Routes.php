@@ -20,11 +20,10 @@ $routes->get('/', 'Home::index');
 $routes->get('about', 'Home::about');
 $routes->get('login', 'Home::index');
 $routes->post('login', 'Auth::attempt');
-$routes->get('signup', 'Auth::signup');
-$routes->post('signup', 'Auth::store');
 $routes->get('forgot-password', 'Auth::forgot');
 $routes->post('logout', 'Auth::logout');
 $routes->get('catalog', 'Catalog::index');
+$routes->get('catalog/suggest', 'Catalog::suggest');   // Browse Books search suggestions (JSON)
 $routes->get('catalog/(:num)', 'Catalog::show/$1');
 
 // ---- Any logged-in user -------------------------------------------------
