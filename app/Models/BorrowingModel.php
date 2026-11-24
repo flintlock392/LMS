@@ -59,6 +59,15 @@ class BorrowingModel extends Model
                 ->orLike('u.id_number', $f['q'])
                 ->groupEnd();
         }
+        // Course the borrowed book is meant for (one of the four programs, or General reading).
+        apply_course_filter($this, 'books.course', (string) ($f['course'] ?? ''));
+
+        // Category of the borrowed book ("none" = uncategorized).
+        if (! empty($f['category_id'])) {
+            $f['category_id'] === 'none'
+                ? $this->where('books.category_id', null)
+                : $this->where('books.category_id', (int) $f['category_id']);
+        }
         if (! empty($f['user_id'])) {
             $this->where('borrowings.user_id', (int) $f['user_id']);
         }

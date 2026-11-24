@@ -4,6 +4,14 @@
 <?= $this->section('content') ?>
 <p class="text-muted mb-4">Good <?= (int) date('G') < 12 ? 'morning' : ((int) date('G') < 18 ? 'afternoon' : 'evening') ?>, <?= esc(session()->get('name')) ?>. Here's the library today, <?= date('l, F j') ?>.</p>
 
+<?php if ($requests > 0): ?>
+    <div class="alert alert-warning d-flex align-items-center gap-2">
+        <i class="bi bi-bell"></i>
+        <span><strong><?= $requests ?></strong> student request<?= $requests === 1 ? ' is' : 's are' ?> waiting for approval.</span>
+        <a class="btn btn-sm btn-nook ms-auto" href="<?= site_url('library?tab=requested') ?>">Review requests</a>
+    </div>
+<?php endif; ?>
+
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-xl-3">
         <a class="stat" href="<?= site_url('library?tab=borrowed') ?>">

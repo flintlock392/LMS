@@ -61,17 +61,41 @@ if (! function_exists('posted_course')) {
     }
 }
 
+if (! function_exists('apply_course_filter')) {
+    /**
+     * Library "Course" filter: one of UserModel::COURSES, or "__general" for General reading,
+     * which covers books not tied to any course AND books tagged with any other course.
+     * Anything else is ignored.
+     *
+     * @param \CodeIgniter\Model|\CodeIgniter\Database\BaseBuilder $query
+     */
+    function apply_course_filter($query, string $column, string $course): void
+    {
+        if ($course === '__general') {
+            $query->groupStart()
+                ->where($column, null)
+                ->orWhere($column, '')
+                ->orWhereNotIn($column, UserModel::COURSES)
+                ->groupEnd();
+        } elseif (in_array($course, UserModel::COURSES, true)) {
+            $query->where($column, $course);
+        }
+    }
+}
+
 if (! function_exists('course_options')) {
-    /** Every course in use: students' programs plus courses books are tagged with (A–Z). */
+    /**
+     * Courses for book filters and the book form: the four official programs first,
+     * then any other course a book is tagged with (A–Z). Students' own courses are not added.
+     */
     function course_options(): array
     {
-        $db   = db_connect();
-        $rows = $db->query(
-            "SELECT course FROM users WHERE role = 'student' AND course IS NOT NULL AND course <> ''
-             UNION SELECT course FROM books WHERE course IS NOT NULL AND course <> '' ORDER BY course"
-        )->getResultArray();
+        $tagged = array_column(
+            db_connect()->query("SELECT DISTINCT course FROM books WHERE course IS NOT NULL AND course <> '' ORDER BY course")->getResultArray(),
+            'course'
+        );
 
-        return array_column($rows, 'course');
+        return array_values(array_unique(array_merge(UserModel::COURSES, $tagged)));
     }
 }
 

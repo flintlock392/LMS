@@ -69,6 +69,8 @@ class BookModel extends Model
         if (! empty($f['author'])) {
             $this->where('books.author', $f['author']);
         }
+        // Course the book is meant for (one of the four programs, or "Other").
+        apply_course_filter($this, 'books.course', (string) ($f['course'] ?? ''));
         if (! empty($f['added_from'])) {
             $this->where('books.created_at >=', $f['added_from'] . ' 00:00:00');
         }

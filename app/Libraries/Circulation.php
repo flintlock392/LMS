@@ -3,6 +3,7 @@
 namespace App\Libraries;
 
 use App\Models\BookModel;
+use App\Models\BookRequestModel;
 use App\Models\BorrowingModel;
 use App\Models\FineModel;
 use App\Models\InventoryLogModel;
@@ -39,32 +40,7 @@ class Circulation
     /** Lend a book to a student. Returns the new borrowing id. */
     public function checkout(int $bookId, int $userId, int $staffId): int
     {
-        $book = $this->books->find($bookId);
-        if (! $book) {
-            throw new RuntimeException('Book not found.');
-        }
-        $user = $this->borrowerOrFail($userId);
-
-        $maxLoans = (int) $this->settings->value('max_loans');
-        if ($this->borrowings->activeCountForUser($userId) >= $maxLoans) {
-            throw new RuntimeException($user['name'] . ' already has the maximum of ' . $maxLoans . ' book(s) on loan.');
-        }
-        if ($this->borrowings->overdueCountForUser($userId) > 0) {
-            throw new RuntimeException($user['name'] . ' has overdue books. They must be returned first.');
-        }
-        if ($this->settings->value('block_unpaid_fines') === '1') {
-            $unpaid = $this->fines->unpaidTotalForUser($userId);
-            if ($unpaid > 0) {
-                throw new RuntimeException($user['name'] . ' has unpaid fines of ' . money($unpaid) . '. Settle them before borrowing.');
-            }
-        }
-        if ($this->borrowings->userHasBook($userId, $bookId)) {
-            throw new RuntimeException($user['name'] . ' already has a copy of "' . $book['title'] . '".');
-        }
-
-        if ($this->books->availableCopies($bookId) <= 0) {
-            throw new RuntimeException('No copies of "' . $book['title'] . '" are on the shelf right now. All copies are on loan.');
-        }
+        [$book, $user] = $this->assertCanBorrow($bookId, $userId);
 
         $id = (int) $this->borrowings->insert([
             'book_id'     => $bookId,
@@ -78,7 +54,167 @@ class Circulation
         log_activity('circulation', 'issued', 'Issued "' . $book['title'] . '" to ' . $user['name'] . ' (' . $user['id_number'] . '), due '
             . fmt_date(date('Y-m-d', strtotime('+' . (int) $this->settings->value('loan_days') . ' days'))), 'borrowing', $id, $staffId);
 
+        // A waiting "Request to borrow" for this book is now fulfilled.
+        $this->closePendingRequests(['user_id' => $userId, 'book_id' => $bookId, 'type' => 'borrow'], $staffId, $id);
+
         return $id;
+    }
+
+    /**
+     * Every rule a student must pass to borrow (used at the desk and for requests).
+     * $forRequest: also counts the student's other waiting borrow requests toward the limit.
+     *
+     * @return array{0: array, 1: array} [book, user]
+     */
+    private function assertCanBorrow(int $bookId, int $userId, bool $forRequest = false): array
+    {
+        $book = $this->books->find($bookId);
+        if (! $book) {
+            throw new RuntimeException('Book not found.');
+        }
+        $user = $this->borrowerOrFail($userId);
+        $who  = $forRequest ? 'You' : $user['name'];
+
+        $maxLoans = (int) $this->settings->value('max_loans');
+        $count    = $this->borrowings->activeCountForUser($userId);
+        if ($forRequest) {
+            $count += (new BookRequestModel())->where('user_id', $userId)->where('type', 'borrow')->where('status', 'pending')->countAllResults();
+        }
+        if ($count >= $maxLoans) {
+            throw new RuntimeException($who . ($forRequest ? ' already have' : ' already has') . ' the maximum of ' . $maxLoans . ' book(s)'
+                . ($forRequest ? ' on loan or requested.' : ' on loan.'));
+        }
+        if ($this->borrowings->overdueCountForUser($userId) > 0) {
+            throw new RuntimeException($who . ($forRequest ? ' have' : ' has') . ' overdue books. They must be returned first.');
+        }
+        if ($this->settings->value('block_unpaid_fines') === '1') {
+            $unpaid = $this->fines->unpaidTotalForUser($userId);
+            if ($unpaid > 0) {
+                throw new RuntimeException($who . ($forRequest ? ' have' : ' has') . ' unpaid fines of ' . money($unpaid) . '. Settle them before borrowing.');
+            }
+        }
+        if ($this->borrowings->userHasBook($userId, $bookId)) {
+            throw new RuntimeException($who . ($forRequest ? ' already have' : ' already has') . ' a copy of "' . $book['title'] . '".');
+        }
+        if ($this->books->availableCopies($bookId) <= 0) {
+            throw new RuntimeException('No copies of "' . $book['title'] . '" are on the shelf right now. All copies are on loan.');
+        }
+
+        return [$book, $user];
+    }
+
+    // ------------------------------------------------------------------
+    // Student requests (Browse Books → staff approve in Library → Requested)
+    // ------------------------------------------------------------------
+
+    /** Student asks to borrow a book that is on the shelf. Returns the request id. */
+    public function requestBorrow(int $bookId, int $userId): int
+    {
+        $requests = new BookRequestModel();
+        if ($requests->findPending($userId, $bookId, 'borrow')) {
+            throw new RuntimeException('You already requested this book. Please wait for the library staff.');
+        }
+        [$book, $user] = $this->assertCanBorrow($bookId, $userId, true);
+
+        $id = (int) $requests->insert(['type' => 'borrow', 'user_id' => $userId, 'book_id' => $bookId, 'status' => 'pending'], true);
+        log_activity('circulation', 'borrow_requested', $user['name'] . ' (' . $user['id_number'] . ') requested to borrow "' . $book['title'] . '"', 'request', $id, $userId);
+
+        return $id;
+    }
+
+    /** Student asks to return a book they have on loan. Returns the request id. */
+    public function requestReturn(int $borrowingId, int $userId): int
+    {
+        $loan = $this->borrowings->find($borrowingId);
+        if (! $loan || (int) $loan['user_id'] !== $userId || $loan['status'] !== 'borrowed') {
+            throw new RuntimeException('That book is not on loan to you.');
+        }
+        $requests = new BookRequestModel();
+        if ($requests->where('borrowing_id', $borrowingId)->where('type', 'return')->where('status', 'pending')->first()) {
+            throw new RuntimeException('You already asked to return this book. Please bring it to the library desk.');
+        }
+
+        $book = $this->books->find($loan['book_id']);
+        $user = $this->users->find($userId);
+        $id   = (int) $requests->insert([
+            'type' => 'return', 'user_id' => $userId, 'book_id' => (int) $loan['book_id'], 'borrowing_id' => $borrowingId, 'status' => 'pending',
+        ], true);
+        log_activity('circulation', 'return_requested', $user['name'] . ' (' . $user['id_number'] . ') requested to return "' . $book['title'] . '"', 'request', $id, $userId);
+
+        return $id;
+    }
+
+    /** Student withdraws their own waiting request. */
+    public function cancelRequest(int $requestId, int $userId): void
+    {
+        $requests = new BookRequestModel();
+        $r        = $requests->find($requestId);
+        if (! $r || (int) $r['user_id'] !== $userId || $r['status'] !== 'pending') {
+            throw new RuntimeException('That request is no longer waiting.');
+        }
+        $requests->update($requestId, ['status' => 'cancelled', 'handled_at' => date('Y-m-d H:i:s')]);
+
+        $book = $this->books->find($r['book_id']);
+        log_activity('circulation', 'request_cancelled', 'Cancelled own ' . $r['type'] . ' request for "' . $book['title'] . '"', 'request', $requestId, $userId);
+    }
+
+    /** Staff approve a borrow request: lends the book (all borrowing rules re-checked). */
+    public function approveBorrowRequest(int $requestId, int $staffId): int
+    {
+        $r = $this->pendingRequestOrFail($requestId, 'borrow');
+
+        return $this->checkout((int) $r['book_id'], (int) $r['user_id'], $staffId);   // closes the request too
+    }
+
+    /** Staff receive a book for a return request (condition / damage / lost as at the desk). */
+    public function approveReturnRequest(int $requestId, int $staffId, string $condition = 'good', ?float $damageFee = null, string $notes = ''): string
+    {
+        $r = $this->pendingRequestOrFail($requestId, 'return');
+
+        return $this->checkin((int) $r['borrowing_id'], $staffId, $condition, $damageFee, $notes);   // closes the request too
+    }
+
+    /** Staff decline a request, optionally saying why (the student sees the reason). */
+    public function declineRequest(int $requestId, int $staffId, string $reason = ''): void
+    {
+        $r = (new BookRequestModel())->find($requestId);
+        if (! $r || $r['status'] !== 'pending') {
+            throw new RuntimeException('That request is no longer waiting.');
+        }
+        (new BookRequestModel())->update($requestId, [
+            'status' => 'declined', 'handled_by' => $staffId, 'handled_at' => date('Y-m-d H:i:s'),
+            'reason' => $reason !== '' ? mb_substr($reason, 0, 255) : null,
+        ]);
+
+        $book = $this->books->find($r['book_id']);
+        $user = $this->users->find($r['user_id']);
+        log_activity('circulation', 'request_declined', 'Declined ' . $user['name'] . '\'s ' . $r['type'] . ' request for "' . $book['title'] . '"'
+            . ($reason !== '' ? ' · reason: ' . $reason : ''), 'request', $requestId, $staffId);
+    }
+
+    private function pendingRequestOrFail(int $requestId, string $type): array
+    {
+        $r = (new BookRequestModel())->find($requestId);
+        if (! $r || $r['status'] !== 'pending' || $r['type'] !== $type) {
+            throw new RuntimeException('That request is no longer waiting.');
+        }
+
+        return $r;
+    }
+
+    /** Mark matching waiting requests as approved (e.g. a book issued or returned at the desk). */
+    private function closePendingRequests(array $where, int $staffId, ?int $borrowingId = null): void
+    {
+        $requests = new BookRequestModel();
+        foreach ($where as $col => $val) {
+            $requests->where($col, $val);
+        }
+        foreach ($requests->where('status', 'pending')->findAll() as $r) {
+            (new BookRequestModel())->update($r['id'], array_filter([
+                'status' => 'approved', 'handled_by' => $staffId, 'handled_at' => date('Y-m-d H:i:s'),
+                'borrowing_id' => $borrowingId ?? $r['borrowing_id'],
+            ], static fn ($v) => $v !== null));
+        }
     }
 
     /**
@@ -130,6 +266,9 @@ class Circulation
                 }
             }
         }
+
+        // A waiting "Request return" for this loan is now done.
+        $this->closePendingRequests(['borrowing_id' => $borrowingId, 'type' => 'return'], $staffId);
 
         $db->transComplete();
 

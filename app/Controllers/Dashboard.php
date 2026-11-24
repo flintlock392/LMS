@@ -26,6 +26,7 @@ class Dashboard extends BaseController
             'bookStats'  => $books->stats(),
             'loans'      => $borrowings->counts(),
             'fineTotals' => (new FineModel())->totals(),
+            'requests'   => (new \App\Models\BookRequestModel())->pendingCount(),
             'students'   => $users->where('role', UserModel::STUDENT)->where('status', 'active')->countAllResults(),
             'staffCount' => $users->whereIn('role', UserModel::STAFF_ROLES)->countAllResults(),
             'overdue'    => (new BorrowingModel())->filtered(['status' => 'overdue'])->findAll(6),

@@ -16,6 +16,13 @@ $public = $layout === 'layouts/public';
                 <option value="<?= $c['id'] ?>" <?= $filters['category_id'] === (string) $c['id'] ? 'selected' : '' ?>><?= esc($c['name']) ?></option>
             <?php endforeach; ?>
         </select>
+        <select class="form-select form-select-sm" name="course" aria-label="Course" style="max-width: 300px">
+            <option value="">All courses</option>
+            <?php foreach (\App\Models\UserModel::COURSES as $c): ?>
+                <option value="<?= esc($c) ?>" <?= $filters['course'] === $c ? 'selected' : '' ?>><?= esc($c) ?></option>
+            <?php endforeach; ?>
+            <option value="__general" <?= $filters['course'] === '__general' ? 'selected' : '' ?>>General reading (includes other courses)</option>
+        </select>
         <div class="form-check ms-1">
             <input class="form-check-input" type="checkbox" id="avail" name="availability" value="in_stock" <?= $filters['availability'] ? 'checked' : '' ?>>
             <label class="form-check-label small" for="avail">Available now</label>

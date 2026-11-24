@@ -38,6 +38,10 @@ $routes->group('', ['filter' => 'role'], static function ($routes) {
 // ---- Students -------------------------------------------------------------
 $routes->group('', ['filter' => 'role:student'], static function ($routes) {
     $routes->get('my/loans', 'My::loans');
+    // Request & return (Browse Books / My Loans)
+    $routes->post('catalog/(:num)/request', 'Catalog::request/$1');
+    $routes->post('my/loans/(:num)/return-request', 'My::requestReturn/$1');
+    $routes->post('my/requests/(:num)/cancel', 'My::cancelRequest/$1');
     $routes->get('my/fines', 'My::fines');
 });
 
@@ -89,6 +93,11 @@ $routes->group('', ['filter' => $staff], static function ($routes) {
 
     $routes->get('circulation', 'Library::legacy/circulation');
     $routes->post('circulation/issue', 'Circulation::issue');
+
+    // Library → Requested: students' borrow / return requests
+    $routes->post('requests/(:num)/approve', 'Requests::approve/$1');
+    $routes->post('requests/(:num)/receive', 'Requests::receive/$1');
+    $routes->post('requests/(:num)/decline', 'Requests::decline/$1');
     $routes->post('circulation/(:num)/return', 'Circulation::receive/$1');
 
     $routes->get('suggest', 'Suggest::index');                       // search-box suggestions (JSON)

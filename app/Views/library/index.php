@@ -4,6 +4,7 @@ use App\Models\InventoryLogModel;
 
 $tabs = [
     'all'         => 'All',
+    'requested'   => 'Requested',
     'collections' => 'Collections',
     'borrowed'    => 'Borrowed',
     'overdue'     => 'Overdue',
@@ -12,12 +13,13 @@ $tabs = [
     'books'       => 'Books',
 ];
 // Build a link that keeps the search and date range when switching tabs.
-$url = static function (array $extra = []) use ($tab, $q, $from, $to): string {
-    $params = array_filter(array_merge(['tab' => $tab, 'q' => $q, 'from' => $from, 'to' => $to], $extra), static fn ($v) => $v !== '' && $v !== null);
+$url = static function (array $extra = []) use ($tab, $q, $from, $to, $course, $category): string {
+    $params = array_filter(array_merge(['tab' => $tab, 'q' => $q, 'course' => $course, 'category_id' => $category, 'from' => $from, 'to' => $to], $extra), static fn ($v) => $v !== '' && $v !== null);
 
     return site_url('library') . '?' . http_build_query($params);
 };
-$isLoanTab = ! in_array($tab, ['collections', 'books'], true);
+$isLoanTab = in_array($tab, ['all', 'borrowed', 'overdue', 'returned', 'lost'], true);
+$isBookTab = in_array($tab, ['collections', 'books'], true);
 ?>
 <?= $this->extend('layouts/app') ?>
 <?= $this->section('title') ?>Library<?= $this->endSection() ?>
@@ -35,8 +37,8 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
 <div class="panel">
     <nav class="tabs-nook library-tabs" aria-label="Library sections">
         <?php foreach ($tabs as $key => $label): ?>
-            <a class="<?= $tab === $key ? 'active' : '' ?>" href="<?= $url(['tab' => $key, 'category_id' => null]) ?>"<?= $tab === $key ? ' aria-current="page"' : '' ?>>
-                <?= $label ?><span class="count<?= $key === 'overdue' && $counts['overdue'] > 0 ? ' count-bad' : '' ?>"><?= $counts[$key] ?></span>
+            <a class="<?= $tab === $key ? 'active' : '' ?>" href="<?= $url(['tab' => $key]) ?>"<?= $tab === $key ? ' aria-current="page"' : '' ?>>
+                <?= $label ?><span class="count<?= in_array($key, ['overdue', 'requested'], true) && $counts[$key] > 0 ? ' count-bad' : '' ?>"><?= $counts[$key] ?></span>
             </a>
         <?php endforeach; ?>
     </nav>
@@ -46,20 +48,28 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
         <input type="hidden" name="tab" value="<?= esc($tab) ?>">
         <div class="field">
             <label for="q">Search</label>
-            <input class="form-control form-control-sm search-box" type="search" id="q" name="q" value="<?= esc($q) ?>" data-suggest="<?= $isLoanTab ? 'loans' : 'books' ?>"
-                   placeholder="<?= $isLoanTab ? 'Book, ISBN or student' : 'Title, author or ISBN' ?>">
+            <input class="form-control form-control-sm search-box" type="search" id="q" name="q" value="<?= esc($q) ?>" data-suggest="<?= $isBookTab ? 'books' : 'loans' ?>"
+                   placeholder="<?= $isBookTab ? 'Title, author or ISBN' : 'Book, ISBN or student' ?>">
         </div>
-        <?php if ($tab === 'collections' || $tab === 'books'): ?>
             <div class="field">
                 <label for="category_id">Category</label>
-                <select class="form-select form-select-sm" id="category_id" name="category_id">
+                <select class="form-select form-select-sm" id="category_id" name="category_id" onchange="this.form.submit()">
                     <option value="">All categories</option>
                     <?php foreach ($categories as $c): ?>
                         <option value="<?= $c['id'] ?>" <?= $category === (string) $c['id'] ? 'selected' : '' ?>><?= esc($c['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-        <?php endif; ?>
+            <div class="field">
+                <label for="course">Course</label>
+                <select class="form-select form-select-sm course-filter" id="course" name="course" onchange="this.form.submit()">
+                    <option value="">All courses</option>
+                    <?php foreach ($courses as $c): ?>
+                        <option value="<?= esc($c) ?>" <?= $course === $c ? 'selected' : '' ?>><?= esc($c) ?></option>
+                    <?php endforeach; ?>
+                    <option value="__general" <?= $course === '__general' ? 'selected' : '' ?>>General reading (includes other courses)</option>
+                </select>
+            </div>
         <div class="field">
             <label for="from">Start date</label>
             <input class="form-control form-control-sm" type="date" id="from" name="from" value="<?= esc($from) ?>" max="<?= date('Y-m-d') ?>" aria-describedby="range-help">
@@ -70,7 +80,7 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
             <input class="form-control form-control-sm" type="date" id="to" name="to" value="<?= esc($to) ?>" max="<?= date('Y-m-d') ?>" aria-describedby="range-help">
         </div>
         <button class="btn btn-sm btn-nook"><i class="bi bi-funnel me-1"></i>Apply</button>
-        <?php if ($q !== '' || $from !== '' || $to !== '' || $category !== ''): ?>
+        <?php if ($q !== '' || $from !== '' || $to !== '' || $category !== '' || $course !== ''): ?>
             <a class="btn btn-sm btn-link" href="<?= site_url('library?tab=' . $tab) ?>">Clear</a>
         <?php endif; ?>
     </form>
@@ -86,7 +96,63 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
     <?php endif; ?>
     <div class="filter-summary"><i class="bi bi-funnel"></i><span><?= esc($summary) ?></span></div>
 
-    <?php if ($isLoanTab): ?>
+    <?php if ($tab === 'requested'): ?>
+        <!-- ===== Requested: students' borrow / return requests waiting for staff ===== -->
+        <?php if (! $rows): ?>
+            <div class="empty"><i class="bi bi-check2-all"></i>No requests are waiting. Students' "Request to borrow" and "Request return" appear here.</div>
+        <?php else: ?>
+            <div class="table-responsive"><table class="table table-nook">
+                <thead><tr><th>Request</th><th>Book</th><th>Student</th><th>Details</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                <?php foreach ($rows as $r): $isBorrow = $r['type'] === 'borrow'; ?>
+                    <tr>
+                        <td><span class="pill <?= $isBorrow ? 'pill-info' : 'pill-warning' ?>"><i class="bi bi-<?= $isBorrow ? 'bookmark-plus' : 'box-arrow-in-down-left' ?> me-1"></i><?= $isBorrow ? 'Borrow' : 'Return' ?></span>
+                            <div class="sub mt-1"><?= fmt_date($r['created_at'], true) ?></div></td>
+                        <td><a class="text-reset" href="<?= site_url('books/' . $r['book_id']) ?>"><?= esc($r['title']) ?></a><div class="sub"><?= esc($r['isbn']) ?></div></td>
+                        <td><a class="text-reset" href="<?= site_url('members/' . $r['user_id']) ?>"><?= esc($r['borrower_name']) ?></a>
+                            <div class="sub"><?= esc($r['borrower_id_number']) ?><?= $r['student_course'] ? ' · ' . esc($r['student_course']) : '' ?></div></td>
+                        <td>
+                            <?php if ($isBorrow): ?>
+                                <?= (int) $r['available'] > 0
+                                    ? '<span class="pill pill-success">' . (int) $r['available'] . ' on the shelf</span>'
+                                    : '<span class="pill pill-danger">None on the shelf</span>' ?>
+                                <div class="sub">Due back <?= fmt_date(date('Y-m-d', strtotime('+' . (int) setting('loan_days') . ' days'))) ?> if issued today</div>
+                            <?php else: ?>
+                                Due <?= fmt_date($r['due_date']) ?>
+                                <?php if ($r['days_late'] > 0): ?><div class="sub text-danger"><?= $r['days_late'] ?>d late · <?= money($r['est_fine']) ?> fine</div><?php else: ?><div class="sub">On time</div><?php endif; ?>
+                            <?php endif; ?>
+                        </td>
+                        <td class="actions">
+                            <?php if ($isBorrow): ?>
+                                <form class="d-inline" method="post" action="<?= site_url('requests/' . $r['id'] . '/approve') ?>"
+                                      data-confirm="Approve and issue &quot;<?= esc($r['title']) ?>&quot; to <?= esc($r['borrower_name']) ?>?">
+                                    <?= csrf_field() ?><button class="btn btn-sm btn-nook"><i class="bi bi-check2 me-1"></i>Approve &amp; issue</button>
+                                </form>
+                            <?php else: ?>
+                                <button class="btn btn-sm btn-nook" type="button" data-bs-toggle="modal" data-bs-target="#returnModal"
+                                        data-action="<?= site_url('requests/' . $r['id'] . '/receive') ?>"
+                                        data-title="<?= esc($r['title']) ?>" data-student="<?= esc($r['borrower_name']) ?>"
+                                        data-late="<?= $r['days_late'] > 0 ? $r['days_late'] . ' day(s) late — overdue fine ' . money($r['est_fine']) . ' will be charged.' : 'On time — no overdue fine.' ?>">
+                                    <i class="bi bi-box-arrow-in-down-left me-1"></i>Receive return</button>
+                            <?php endif; ?>
+                            <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#decline-<?= $r['id'] ?>">Decline</button>
+                        </td>
+                    </tr>
+                    <tr class="collapse" id="decline-<?= $r['id'] ?>"><td colspan="5">
+                        <form class="d-flex gap-2" method="post" action="<?= site_url('requests/' . $r['id'] . '/decline') ?>"
+                              data-confirm="Decline <?= esc($r['borrower_name']) ?>'s <?= $r['type'] ?> request for &quot;<?= esc($r['title']) ?>&quot;?">
+                            <?= csrf_field() ?>
+                            <input class="form-control form-control-sm" name="reason" maxlength="200" placeholder="Reason the student will see (optional), e.g. book is being repaired">
+                            <button class="btn btn-sm btn-danger text-nowrap">Decline request</button>
+                        </form>
+                    </td></tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table></div>
+            <?= $pager->links('default', 'nook') ?>
+        <?php endif; ?>
+
+    <?php elseif ($isLoanTab): ?>
         <!-- ===== Loan records: All / Borrowed / Overdue / Returned / Lost ===== -->
         <?php if (! $rows): ?>
             <div class="empty"><i class="bi bi-inbox"></i>No records to show.</div>

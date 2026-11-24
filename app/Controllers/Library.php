@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Libraries\Circulation as CirculationService;
 use App\Models\ActivityLogModel;
 use App\Models\BookModel;
+use App\Models\BookRequestModel;
 use App\Models\BorrowingModel;
 use App\Models\CategoryModel;
 use App\Models\InventoryLogModel;
@@ -22,11 +23,12 @@ use App\Models\UserModel;
  */
 class Library extends BaseController
 {
-    public const TABS = ['all', 'collections', 'borrowed', 'overdue', 'returned', 'lost', 'books'];
+    public const TABS = ['all', 'requested', 'collections', 'borrowed', 'overdue', 'returned', 'lost', 'books'];
 
     /** What the date range filters on, per tab (shown to the user). */
     public const DATE_MEANING = [
         'all'         => 'borrowed',
+        'requested'   => 'requested',
         'borrowed'    => 'borrowed',
         'overdue'     => 'borrowed',
         'returned'    => 'borrowed',
@@ -57,6 +59,8 @@ class Library extends BaseController
             'log'        => [],
             'categories' => (new CategoryModel())->orderBy('name')->findAll(),
             'category'   => (string) $this->request->getGet('category_id'),
+            'course'     => (string) $this->request->getGet('course'),
+            'courses'    => UserModel::COURSES,  // the four programs (plus "Other" in the view)
             // For the "Issue book" dialog.
             'students'   => (new UserModel())->where('role', UserModel::STUDENT)->activeBorrowers(),
             'bookList'   => (new BookModel())->forSelect(),
@@ -64,11 +68,25 @@ class Library extends BaseController
             'allBooks'   => is_head() ? (new BookModel())->forSelect() : [],
         ];
 
-        if ($tab === 'collections' || $tab === 'books') {
+        if ($tab === 'requested') {
+            // Students' waiting "Request to borrow" / "Request return" (oldest first).
+            $model = new BookRequestModel();
+            $rows  = $model->pendingFiltered([
+                'q' => $q, 'from' => $from, 'to' => $to, 'course' => $data['course'], 'category_id' => $data['category'],
+            ])->paginate(15);
+            foreach ($rows as &$r) {
+                [$r['days_late'], $r['est_fine']] = $r['type'] === 'return' && $r['due_date']
+                    ? $service->overdueFine($r['due_date'], date('Y-m-d')) : [0, 0];
+            }
+            unset($r);
+            $data['rows']  = $rows;
+            $data['pager'] = $model->pager;
+        } elseif ($tab === 'collections' || $tab === 'books') {
             $model = new BookModel();
             $data['rows'] = $model->filtered([
                 'q'           => $q,
                 'category_id' => $data['category'],
+                'course'      => $data['course'],
                 'added_from'  => $tab === 'collections' ? $from : '',
                 'added_to'    => $tab === 'collections' ? $to : '',
                 'sort'        => $tab === 'books' ? 'available' : (string) $this->request->getGet('sort'),
@@ -91,6 +109,11 @@ class Library extends BaseController
                 if ($q !== '') {
                     $log->like('books.title', $q);
                 }
+                // Same Category / Course choice as the stock table above.
+                if ($data['category'] !== '') {
+                    $data['category'] === 'none' ? $log->where('books.category_id', null) : $log->where('books.category_id', (int) $data['category']);
+                }
+                apply_course_filter($log, 'books.course', $data['course']);
                 // Own page numbers ("history_page") so it pages separately from the stock table above.
                 $data['log']      = $log->paginate(10, 'history');
                 $data['logPager'] = $log->pager;
@@ -99,7 +122,7 @@ class Library extends BaseController
         } else {
             $status = ['all' => 'all', 'borrowed' => 'active', 'overdue' => 'overdue', 'returned' => 'returned', 'lost' => 'lost'][$tab];
             $model  = new BorrowingModel();
-            $rows   = $model->filtered(['status' => $status, 'q' => $q, 'from' => $from, 'to' => $to])->paginate(15);
+            $rows   = $model->filtered(['status' => $status, 'q' => $q, 'from' => $from, 'to' => $to, 'course' => $data['course'], 'category_id' => $data['category']])->paginate(15);
             foreach ($rows as &$r) {
                 [$r['days_late'], $r['est_fine']] = $r['status'] === 'borrowed' ? $service->overdueFine($r['due_date'], date('Y-m-d')) : [0, 0];
             }
@@ -109,6 +132,22 @@ class Library extends BaseController
         }
 
         $data['summary'] = $this->summary($tab, $q, $from, $to, $data['pager'] ? $data['pager']->getTotal() : 0);
+        // Mention the chosen course, e.g. "… for Bachelor of Science in Education · 2 results".
+        if (in_array($data['course'], [...UserModel::COURSES, '__general'], true)) {
+            $label = match ($data['course']) {
+                '__general'             => 'general reading (including other courses)',
+                default                 => $data['course'],
+            };
+            $data['summary'] = preg_replace('/ · /', ' for ' . $label . ' · ', str_replace('for every title', 'for titles', $data['summary']), 1);
+        }
+        // Mention the chosen category, e.g. "… in Programming · 3 results".
+        if ($data['category'] !== '') {
+            $names    = array_column($data['categories'], 'name', 'id');
+            $catLabel = $data['category'] === 'none' ? 'uncategorized books' : ($names[(int) $data['category']] ?? null);
+            if ($catLabel !== null) {
+                $data['summary'] = preg_replace('/ · /', ' in ' . $catLabel . ' · ', str_replace('for every title', 'for titles', $data['summary']), 1);
+            }
+        }
 
         // Head Librarian: with both dates set, also list every action in the system in that range.
         $data['activity']      = null;
@@ -153,6 +192,7 @@ class Library extends BaseController
             'returned'    => (new BorrowingModel())->where('status', 'returned')->countAllResults(),
             'lost'        => (new BorrowingModel())->where('status', 'lost')->countAllResults(),
             'books'       => $stats['copies'],
+            'requested'   => (new BookRequestModel())->pendingCount(),
         ];
     }
 
@@ -184,6 +224,7 @@ class Library extends BaseController
     {
         $what = [
             'all'         => 'all borrowing records',
+            'requested'   => 'requests waiting for approval',
             'collections' => 'titles in the collection',
             'borrowed'    => 'books currently borrowed',
             'overdue'     => 'overdue books',
