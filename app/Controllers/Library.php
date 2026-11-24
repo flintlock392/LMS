@@ -90,7 +90,9 @@ class Library extends BaseController
                 if ($q !== '') {
                     $log->like('books.title', $q);
                 }
-                $data['log']      = $log->findAll(30);
+                // Own page numbers ("history_page") so it pages separately from the stock table above.
+                $data['log']      = $log->paginate(10, 'history');
+                $data['logPager'] = $log->pager;
                 $data['stats']    = (new BookModel())->stats();
                 $data['allBooks'] = is_head() ? (new BookModel())->forSelect() : [];
             }
@@ -112,8 +114,10 @@ class Library extends BaseController
         $data['activity']      = null;
         $data['activityTotal'] = 0;
         if (is_head() && $from !== '' && $to !== '') {
-            $data['activity']      = (new ActivityLogModel())->between(['from' => $from, 'to' => $to])->findAll(15);
-            $data['activityTotal'] = (new ActivityLogModel())->between(['from' => $from, 'to' => $to])->countAllResults();
+            $act                   = new ActivityLogModel();
+            $data['activity']      = $act->between(['from' => $from, 'to' => $to])->paginate(10, 'activity');
+            $data['activityPager'] = $act->pager;
+            $data['activityTotal'] = $act->pager->getTotal('activity');
         }
 
         return view('library/index', $data);

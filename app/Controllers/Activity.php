@@ -17,7 +17,7 @@ class Activity extends BaseController
         [$filters, $error] = $this->filters();
 
         $model = new ActivityLogModel();
-        $rows  = $model->between($filters)->paginate(50);
+        $rows  = $model->between($filters)->paginate(10);
 
         $days = (int) round((strtotime($filters['to']) - strtotime($filters['from'])) / 86400) + 1;
 

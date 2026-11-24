@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Libraries\Circulation as CirculationService;
 use App\Models\BookModel;
+use App\Models\CategoryModel;
 use App\Models\ReservationModel;
 use App\Models\UserModel;
 use RuntimeException;
@@ -32,10 +33,48 @@ class Reservations extends BaseController
             'rows'     => $rows,
             'pager'    => $model->pager,
             'filters'  => $filters,
-            'counts'   => (new ReservationModel())->counts(),
-            'students' => (new UserModel())->where('role', UserModel::STUDENT)->activeBorrowers(),
-            'books'    => (new BookModel())->forSelect(),
+            'counts'     => (new ReservationModel())->counts(),
+            'books'      => (new BookModel())->forSelect(),
+            'categories' => (new CategoryModel())->orderBy('name')->findAll(),
+            'courses'    => course_options(),
         ]);
+    }
+
+    /**
+     * Suggestions for the "Student" box: matches the name or the student number.
+     * GET reservations/students?q=juan  →  JSON list (max 8).
+     */
+    public function students()
+    {
+        $q = trim((string) $this->request->getGet('q'));
+        if ($q === '') {
+            return $this->response->setJSON([]);
+        }
+
+        $rows = (new UserModel())
+            ->select('users.id, users.name, users.id_number, users.course, users.year_level, users.status')
+            ->select("(SELECT COUNT(*) FROM reservations r WHERE r.user_id = users.id AND r.status IN ('pending','ready')) AS open_reservations", false)
+            ->select("(SELECT COUNT(*) FROM borrowings b WHERE b.user_id = users.id AND b.status = 'borrowed') AS loans", false)
+            ->where('role', UserModel::STUDENT)
+            ->groupStart()->like('name', $q)->orLike('id_number', $q)->groupEnd()
+            // Names/numbers that start with what was typed come first.
+            ->orderBy("(name LIKE " . db_connect()->escape($q . '%') . " OR id_number LIKE " . db_connect()->escape($q . '%') . ")", 'DESC', false)
+            ->orderBy('name', 'ASC')
+            ->findAll(8);
+
+        $max = (int) setting('max_reservations');
+
+        return $this->response->setJSON(array_map(static fn ($u) => [
+            'id'        => (int) $u['id'],
+            'name'      => $u['name'],
+            'idNumber'  => $u['id_number'],
+            'course'    => $u['course'] ?? '',
+            'year'      => $u['year_level'] ?? '',
+            'suspended' => $u['status'] !== 'active',
+            'open'      => (int) $u['open_reservations'],
+            'atLimit'   => (int) $u['open_reservations'] >= $max,
+            'loans'     => (int) $u['loans'],
+        ], $rows));
     }
 
     /** Staff places a reservation on behalf of a student (e.g. over the counter). */

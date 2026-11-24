@@ -41,6 +41,13 @@
                 <label class="form-label" for="shelf_location">Shelf location</label>
                 <input class="form-control" id="shelf_location" name="shelf_location" value="<?= esc(old('shelf_location', $book['shelf_location'] ?? '', false)) ?>" maxlength="50" placeholder="e.g. A-101">
             </div>
+            <div class="col-md-8">
+                <label class="form-label" for="course">Course</label>
+                <input class="form-control" id="course" name="course" list="course-list" maxlength="100"
+                       value="<?= esc(old('course', $book['course'] ?? '', false)) ?>" placeholder="Leave empty for general reading (all courses)">
+                <datalist id="course-list"><?php foreach (course_options() as $c): ?><option value="<?= esc($c) ?>"><?php endforeach; ?></datalist>
+                <div class="form-text">The program this book is meant for, e.g. BS Information Technology. Used to filter books when reserving.</div>
+            </div>
             <?php if (! $editing): ?>
                 <div class="col-md-4">
                     <label class="form-label" for="stock_count">Number of copies *</label>

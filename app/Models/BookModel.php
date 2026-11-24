@@ -24,7 +24,7 @@ class BookModel extends Model
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $allowedFields = [
-        'title', 'isbn', 'author', 'category_id', 'publisher',
+        'title', 'isbn', 'author', 'category_id', 'course', 'publisher',
         'publication_year', 'shelf_location', 'stock_count', 'description',
     ];
     protected $useTimestamps = true;
@@ -161,7 +161,7 @@ class BookModel extends Model
     /** Short list for circulation drop-downs. */
     public function forSelect(): array
     {
-        return $this->select('books.id, books.title, books.isbn, books.author', false)
+        return $this->select('books.id, books.title, books.isbn, books.author, books.category_id, books.course', false)
             ->select(self::availableSql() . ' AS available', false)
             ->orderBy('books.title', 'ASC')
             ->findAll();

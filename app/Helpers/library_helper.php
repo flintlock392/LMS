@@ -8,6 +8,37 @@
 use App\Models\SettingModel;
 use App\Models\UserModel;
 
+if (! function_exists('pager_info')) {
+    /** "Showing 11–20 of 51" for a paginated list. */
+    function pager_info(\CodeIgniter\Pager\Pager $pager, string $group = 'default', string $noun = 'entries'): string
+    {
+        $total = $pager->getTotal($group);
+        if ($total === 0) {
+            return '';
+        }
+        $per   = $pager->getPerPage($group);
+        $page  = max(1, $pager->getCurrentPage($group));
+        $first = ($page - 1) * $per + 1;
+        $last  = min($total, $page * $per);
+
+        return 'Showing ' . $first . '–' . $last . ' of ' . $total . ' ' . $noun . ' · page ' . $page . ' of ' . $pager->getPageCount($group);
+    }
+}
+
+if (! function_exists('course_options')) {
+    /** Every course in use: students' programs plus courses books are tagged with (A–Z). */
+    function course_options(): array
+    {
+        $db   = db_connect();
+        $rows = $db->query(
+            "SELECT course FROM users WHERE role = 'student' AND course IS NOT NULL AND course <> ''
+             UNION SELECT course FROM books WHERE course IS NOT NULL AND course <> '' ORDER BY course"
+        )->getResultArray();
+
+        return array_column($rows, 'course');
+    }
+}
+
 if (! function_exists('isbn_normalize')) {
     /** Strip spaces/hyphens and upper-case (so "978-0-13-235088-4" => "9780132350884"). */
     function isbn_normalize(string $isbn): string

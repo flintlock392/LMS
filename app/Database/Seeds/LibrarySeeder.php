@@ -95,6 +95,17 @@ class LibrarySeeder extends Seeder
             $logs->insert(['book_id' => $id, 'change' => $stock, 'reason' => 'initial', 'stock_after' => $stock, 'notes' => 'Opening inventory', 'user_id' => $userIds['HL-0001']]);
         }
 
+        // Courses each title is meant for (empty = general reading for every course).
+        $courses = [
+            '9780132350884' => 'BS Information Technology', '9780596517748' => 'BS Information Technology', '9780135957059' => 'BS Information Technology',
+            '9780134685991' => 'BS Computer Science', '9780553380163' => 'BS Computer Science',
+            '9780743273565' => 'BA Communication', '9780141439518' => 'BA Communication',
+            '9780061120084' => 'BS Education', '9780062316097' => 'BS Education',
+        ];
+        foreach ($courses as $isbn => $course) {
+            $books->update($bookIds[$isbn], ['course' => $course]);
+        }
+
         // ---- Sample circulation ---------------------------------------------
         $staff = $userIds['LS-0001'];
         $loans = new BorrowingModel();

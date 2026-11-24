@@ -87,7 +87,12 @@ $quick = [
     </div>
 
     <?= view('activity/_list', ['rows' => $rows]) ?>
-    <?= $pager->links('default', 'nook') ?>
+    <?php if ($rows): ?>
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+            <span class="small text-muted"><?= pager_info($pager, 'default', 'actions') ?></span>
+            <div class="ms-auto"><?= $pager->links('default', 'nook') ?></div>
+        </div>
+    <?php endif; ?>
 </div>
 <?= $this->endSection() ?>
 

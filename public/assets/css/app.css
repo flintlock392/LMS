@@ -276,6 +276,33 @@ a.stat:hover { border-color: var(--cream-300); box-shadow: 0 4px 12px rgba(85,52
 }
 .filter-summary a { margin-left: auto; }
 
+/* Reservations → suggestive student search */
+.suggest-icon { position: absolute; left: .85rem; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.suggest-list {
+    position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: .3rem;
+    list-style: none; background: #fff; border: 1px solid #e3d2bb; border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(85, 52, 43, .15); max-height: 300px; overflow-y: auto;
+}
+.suggest-list li[role="option"] { display: flex; align-items: center; gap: .6rem; padding: .5rem .6rem; border-radius: 8px; cursor: pointer; font-size: .88rem; }
+.suggest-list li[role="option"].active, .suggest-list li[role="option"]:hover { background: var(--cream-100); }
+.suggest-list li.disabled { opacity: .55; cursor: not-allowed; }
+.suggest-list mark { background: #f6dfae; padding: 0; border-radius: 2px; }
+.suggest-empty { padding: .6rem; font-size: .85rem; color: var(--muted); }
+.avatar-sm {
+    width: 30px; height: 30px; border-radius: 50%; background: var(--brown-600); color: #fff; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 600;
+}
+.student-chip { background: var(--cream-100); border-radius: 10px; padding: .5rem .75rem; font-size: .82rem; line-height: 1.5; }
+
+/* Books tab → Stock history */
+.history-card { border: 1px solid #ecdcc4; border-radius: var(--radius); padding: 1.1rem 1.25rem; background: #fffdf9; }
+.history-desc { font-size: .85rem; color: var(--muted); margin: 0 0 1rem; max-width: 70ch; }
+.history-table { table-layout: fixed; }
+.history-table td { vertical-align: top; padding-top: .7rem; padding-bottom: .7rem; }
+.history-table .pill i { margin-right: .1rem; }
+.pagination .page-link { color: var(--brown-600); border-color: #e7d8c3; }
+.pagination .page-item.active .page-link { background: var(--brown-600); border-color: var(--brown-600); color: #fff; }
+
 /* Activity timeline */
 .activity-day { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
     margin: 1.25rem 0 .5rem; padding-bottom: .35rem; border-bottom: 1px solid #ecdcc4; }

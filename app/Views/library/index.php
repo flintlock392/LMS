@@ -227,22 +227,43 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
             <?php endif; ?>
         </div>
 
-        <h3 class="panel-title mt-4"><i class="bi bi-clock-history"></i> Stock history
-            <span class="ms-auto small text-muted fw-normal"><?= $from !== '' || $to !== '' ? 'within the selected dates' : 'latest 30 changes' ?></span></h3>
-        <?php if (! $log): ?>
-            <div class="empty"><i class="bi bi-inbox"></i>No stock changes in this period.</div>
-        <?php else: ?>
-            <div class="table-responsive"><table class="table table-nook">
-                <thead><tr><th>Date</th><th>Title</th><th>Change</th><th>Reason</th><th>By</th></tr></thead>
-                <tbody><?php foreach ($log as $e): ?>
-                    <tr><td class="sub"><?= fmt_date($e['created_at'], true) ?></td>
-                        <td><?= esc($e['title']) ?></td>
-                        <td class="fw-semibold <?= $e['change'] > 0 ? 'text-success' : 'text-danger' ?>"><?= $e['change'] > 0 ? '+' : '' ?><?= (int) $e['change'] ?> <span class="sub">→ <?= (int) $e['stock_after'] ?></span></td>
-                        <td><?= esc(InventoryLogModel::LABELS[$e['reason']] ?? $e['reason']) ?><?php if ($e['notes']): ?><div class="sub"><?= esc($e['notes']) ?></div><?php endif; ?></td>
-                        <td class="sub"><?= esc($e['user_name'] ?? '—') ?></td></tr>
-                <?php endforeach; ?></tbody>
-            </table></div>
-        <?php endif; ?>
+        <section class="history-card mt-4" aria-labelledby="history-title">
+            <h3 class="panel-title mb-1" id="history-title"><i class="bi bi-clock-history"></i> Stock history</h3>
+            <p class="history-desc">
+                Every change to the number of copies: when it happened, which title, how many copies were added or removed,
+                the reason, and who made the change.
+                <?= $from !== '' || $to !== ''
+                    ? 'Only changes made ' . ($from !== '' && $to !== '' ? 'from ' . fmt_date($from) . ' to ' . fmt_date($to) : ($from !== '' ? 'on or after ' . fmt_date($from) : 'on or before ' . fmt_date($to))) . ' are listed.'
+                    : 'Newest changes first.' ?>
+            </p>
+            <?php if (! $log): ?>
+                <div class="empty"><i class="bi bi-inbox"></i>No stock changes in this period.</div>
+            <?php else: ?>
+                <div class="table-responsive"><table class="table table-nook history-table">
+                    <colgroup><col style="width:16%"><col style="width:30%"><col style="width:15%"><col style="width:25%"><col style="width:14%"></colgroup>
+                    <thead><tr><th>Date</th><th>Title</th><th>Change</th><th>Reason</th><th>Changed by</th></tr></thead>
+                    <tbody><?php foreach ($log as $e): $up = $e['change'] > 0; ?>
+                        <tr>
+                            <td><?= fmt_date($e['created_at']) ?><div class="sub"><?= date('g:i A', strtotime($e['created_at'])) ?></div></td>
+                            <td><a class="text-reset fw-medium" href="<?= site_url('books/' . $e['book_id']) ?>"><?= esc($e['title']) ?></a></td>
+                            <td>
+                                <span class="pill <?= $up ? 'pill-success' : 'pill-danger' ?>"><i class="bi bi-<?= $up ? 'plus' : 'dash' ?>"></i><?= abs((int) $e['change']) ?> cop<?= abs((int) $e['change']) === 1 ? 'y' : 'ies' ?></span>
+                                <div class="sub mt-1">Total after: <?= (int) $e['stock_after'] ?></div>
+                            </td>
+                            <td>
+                                <div class="fw-medium"><?= esc(InventoryLogModel::LABELS[$e['reason']] ?? $e['reason']) ?></div>
+                                <div class="sub"><?= $e['notes'] ? esc($e['notes']) : '<span class="opacity-50">No description</span>' ?></div>
+                            </td>
+                            <td class="sub"><?= esc($e['user_name'] ?? 'System') ?></td>
+                        </tr>
+                    <?php endforeach; ?></tbody>
+                </table></div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                    <span class="small text-muted"><?= pager_info($logPager, 'history', 'changes') ?></span>
+                    <div class="ms-auto"><?= $logPager->links('history', 'nook') ?></div>
+                </div>
+            <?php endif; ?>
+        </section>
     <?php endif; ?>
 </div>
 
@@ -251,8 +272,11 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
         <h2 class="panel-title"><i class="bi bi-clock-history"></i> Everything that happened from <?= fmt_date($from) ?> to <?= fmt_date($to) ?>
             <a class="ms-auto small" href="<?= site_url('activity?from=' . $from . '&to=' . $to) ?>">Open full Activity Log (<?= $activityTotal ?>)</a></h2>
         <?= view('activity/_list', ['rows' => $activity]) ?>
-        <?php if ($activityTotal > count($activity)): ?>
-            <p class="small text-muted mt-2 mb-0">Showing the latest <?= count($activity) ?> of <?= $activityTotal ?> actions. <a href="<?= site_url('activity?from=' . $from . '&to=' . $to) ?>">See all</a></p>
+        <?php if ($activity): ?>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                <span class="small text-muted"><?= pager_info($activityPager, 'activity', 'actions') ?></span>
+                <div class="ms-auto"><?= $activityPager->links('activity', 'nook') ?></div>
+            </div>
         <?php endif; ?>
     </div>
 <?php endif; ?>

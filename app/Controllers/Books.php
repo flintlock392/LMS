@@ -98,6 +98,7 @@ class Books extends BaseController
             'publisher'        => 'permit_empty|max_length[150]',
             'publication_year' => 'permit_empty|integer|greater_than_equal_to[1000]|less_than_equal_to[' . ((int) date('Y') + 1) . ']',
             'shelf_location'   => 'permit_empty|max_length[50]',
+            'course'           => 'permit_empty|max_length[100]',
             'description'      => 'permit_empty|max_length[2000]',
         ];
         if ($id === null) {
@@ -125,6 +126,7 @@ class Books extends BaseController
             'publisher'        => trim((string) ($input['publisher'] ?? '')) ?: null,
             'publication_year' => ($input['publication_year'] ?? '') !== '' ? (int) $input['publication_year'] : null,
             'shelf_location'   => trim((string) ($input['shelf_location'] ?? '')) ?: null,
+            'course'           => trim((string) ($input['course'] ?? '')) ?: null,
             'description'      => trim((string) ($input['description'] ?? '')) ?: null,
         ];
 
