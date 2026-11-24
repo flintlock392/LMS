@@ -233,10 +233,9 @@ if (! function_exists('nav_items')) {
                 ['Dashboard', 'speedometer2', 'dashboard'],
                 ['Library', 'book', 'library', $collection],
                 ['Reservations', 'bookmark-check', 'reservations'],
-                ['User Management', 'people', 'members'],
+                ['User Management', 'people', 'members', ['members', 'staff']],
                 ['Fine Management', 'cash-coin', 'fines'],
                 ['Reports & Analytics', 'bar-chart-line', 'reports'],
-                ['Staff Management', 'person-badge', 'staff'],
                 ['System Settings', 'gear', 'settings'],
             ],
             UserModel::LIBRARIAN => [

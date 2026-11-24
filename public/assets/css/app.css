@@ -262,6 +262,8 @@ a.stat:hover { border-color: var(--cream-300); box-shadow: 0 4px 12px rgba(85,52
 }
 .module-tabs a:hover { background: var(--cream-100); }
 .module-tabs a.active { background: var(--brown-600); color: #fff; }
+.module-tabs .tab-n { font-size: .72rem; background: #ead9c6; color: var(--brown-700); border-radius: 999px; padding: .05rem .45rem; }
+.module-tabs a.active .tab-n { background: rgba(255,255,255,.25); color: #fff; }
 
 /* Date-range filter: labelled pickers + a sentence saying what is shown */
 .date-range { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; }
@@ -275,6 +277,18 @@ a.stat:hover { border-color: var(--cream-300); box-shadow: 0 4px 12px rgba(85,52
     background: var(--cream-100); border-radius: 10px; padding: .5rem .8rem; margin-bottom: 1rem; color: var(--brown-700);
 }
 .filter-summary a { margin-left: auto; }
+
+/* Suggestive search on filter boxes (assets/js/suggest.js) */
+.suggest-wrap { position: relative; display: inline-block; }
+.filters .suggest-wrap { flex: 0 1 260px; }
+.filters .suggest-wrap .form-control, .date-range .suggest-wrap .form-control { width: 100%; max-width: none; }
+.suggest-wrap .suggest-list { min-width: 300px; }
+.suggest-ico {
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; background: var(--cream-100); color: var(--brown-600);
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.suggest-type { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); flex-shrink: 0; }
+.min-w-0 { min-width: 0; }
 
 /* Reservations → suggestive student search */
 .suggest-icon { position: absolute; left: .85rem; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }

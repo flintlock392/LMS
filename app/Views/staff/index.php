@@ -1,14 +1,15 @@
 <?= $this->extend('layouts/app') ?>
-<?= $this->section('title') ?>Staff Management<?= $this->endSection() ?>
+<?= $this->section('title') ?>User Management<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
+<?= view('partials/users_tabs', ['active' => 'staff']) ?>
 <div class="panel">
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
         <h2 class="panel-title mb-0">Library staff</h2>
         <a class="btn btn-nook btn-sm ms-auto" href="<?= site_url('staff/new') ?>"><i class="bi bi-person-plus me-1"></i>Add staff</a>
     </div>
     <form class="filters" method="get">
-        <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($q) ?>" placeholder="Name, Staff ID, email" aria-label="Search">
+        <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($q) ?>" placeholder="Name, Staff ID, email" aria-label="Search staff" data-suggest="staff">
         <button class="btn btn-sm btn-nook"><i class="bi bi-search"></i></button>
     </form>
     <div class="table-responsive"><table class="table table-nook">

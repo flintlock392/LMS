@@ -96,6 +96,7 @@ $routes->group('', ['filter' => $staff], static function ($routes) {
 
     $routes->get('reservations', 'Reservations::index');
     $routes->get('reservations/students', 'Reservations::students'); // suggestive search (JSON)
+    $routes->get('suggest', 'Suggest::index');                       // search-box suggestions (JSON)
     $routes->post('reservations/create', 'Reservations::create');
     $routes->post('reservations/(:num)/issue', 'Reservations::issue/$1');
     $routes->post('reservations/(:num)/cancel', 'Reservations::cancel/$1');

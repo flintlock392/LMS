@@ -46,7 +46,7 @@ $isLoanTab = ! in_array($tab, ['collections', 'books'], true);
         <input type="hidden" name="tab" value="<?= esc($tab) ?>">
         <div class="field">
             <label for="q">Search</label>
-            <input class="form-control form-control-sm search-box" type="search" id="q" name="q" value="<?= esc($q) ?>"
+            <input class="form-control form-control-sm search-box" type="search" id="q" name="q" value="<?= esc($q) ?>" data-suggest="<?= $isLoanTab ? 'loans' : 'books' ?>"
                    placeholder="<?= $isLoanTab ? 'Book, ISBN or student' : 'Title, author or ISBN' ?>">
         </div>
         <?php if ($tab === 'collections' || $tab === 'books'): ?>

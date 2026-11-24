@@ -20,7 +20,7 @@
             </nav>
             <form class="filters" method="get">
                 <input type="hidden" name="status" value="<?= esc($filters['status']) ?>">
-                <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($filters['q']) ?>" placeholder="Student name, number, or book" aria-label="Search">
+                <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($filters['q']) ?>" placeholder="Student name, number, or book" aria-label="Search fines" data-suggest="fines">
                 <button class="btn btn-sm btn-nook"><i class="bi bi-search"></i></button>
             </form>
             <?php if (! $rows): ?>

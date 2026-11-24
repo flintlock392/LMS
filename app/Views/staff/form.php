@@ -3,7 +3,7 @@
 <?= $this->section('title') ?><?= $editing ? 'Edit staff account' : 'Add staff' ?><?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<a class="small d-inline-block mb-3" href="<?= site_url('staff') ?>"><i class="bi bi-arrow-left"></i> Staff Management</a>
+<a class="small d-inline-block mb-3" href="<?= site_url('staff') ?>"><i class="bi bi-arrow-left"></i> User Management · Staff</a>
 <div class="panel" style="max-width: 760px">
     <form method="post" action="<?= site_url($editing ? 'staff/' . $user['id'] . '/update' : 'staff/create') ?>">
         <?= csrf_field() ?>

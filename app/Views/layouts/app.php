@@ -18,7 +18,7 @@ $roleIcon = ['head_librarian' => 'award', 'librarian' => 'person-badge', 'studen
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="<?= base_url('assets/css/app.css') ?>" rel="stylesheet">
 </head>
-<body class="app-body">
+<body class="app-body"<?= is_staff() ? ' data-suggest-url="' . site_url('suggest') . '"' : '' ?>>
 <div class="app-shell">
     <aside class="sidebar" id="sidebar" aria-label="Main menu">
         <a class="brand" href="<?= site_url('dashboard') ?>">
@@ -79,6 +79,7 @@ $roleIcon = ['head_librarian' => 'award', 'librarian' => 'person-badge', 'studen
         if (sb.classList.contains('open') && !sb.contains(e.target) && !e.target.closest('.sidebar-toggle')) { sb.classList.remove('open'); }
     });
 </script>
+<script src="<?= base_url('assets/js/suggest.js') ?>" defer></script>
 <?= $this->renderSection('scripts') ?>
 </body>
 </html>
