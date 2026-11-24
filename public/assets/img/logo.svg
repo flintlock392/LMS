@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="The Cozy Nook">
+  <circle cx="60" cy="60" r="58" fill="#FBF3E6"/>
+  <!-- roof -->
+  <path d="M36 50 L60 32 L84 50" fill="none" stroke="#55342B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- open book -->
+  <path d="M34 56 Q47 50 60 57 Q73 50 86 56 L86 74 Q73 68 60 75 Q47 68 34 74 Z" fill="#E9D3B0" stroke="#55342B" stroke-width="3" stroke-linejoin="round"/>
+  <line x1="60" y1="57" x2="60" y2="75" stroke="#55342B" stroke-width="2.5"/>
+  <text x="60" y="92" text-anchor="middle" font-family="Georgia, serif" font-size="12" font-weight="700" fill="#55342B">The Cozy Nook</text>
+</svg>

@@ -3,8 +3,16 @@
 namespace App\Controllers;
 
 use App\Models\BookModel;
+use App\Models\BorrowingModel;
 use App\Models\CategoryModel;
+use App\Models\InventoryLogModel;
+use App\Models\ReservationModel;
 
+/**
+ * Head Librarian: "Book Management" (full control, including delete + categories).
+ * Librarian Staff: "Book Collection" (browse, add and edit titles).
+ * Copy counts change through Inventory, so every change is logged.
+ */
 class Books extends BaseController
 {
     protected BookModel $books;
@@ -12,12 +20,10 @@ class Books extends BaseController
 
     public function __construct()
     {
-        helper(['form', 'library']);
         $this->books      = new BookModel();
         $this->categories = new CategoryModel();
     }
 
-    /** List with search, category / author / availability filters and sorting (all roles). */
     public function index()
     {
         $filters = [
@@ -29,33 +35,33 @@ class Books extends BaseController
             'dir'          => (string) $this->request->getGet('dir'),
         ];
 
-        $rows = $this->books->filtered($filters)->paginate(10);
-
         return view('books/index', [
-            'books'      => $rows,
+            'books'      => $this->books->filtered($filters)->paginate(12),
             'pager'      => $this->books->pager,
             'filters'    => $filters,
             'categories' => $this->categories->orderBy('name')->findAll(),
-            'authors'    => $this->books->distinctAuthors(),
+            'stats'      => (new BookModel())->stats(),
         ]);
     }
 
     public function show(int $id)
     {
-        $book = $this->books->findWithCategory($id);
+        $book = $this->books->findWithAvailability($id);
         if (! $book) {
             return redirect()->to('/books')->with('error', 'Book not found.');
         }
 
-        return view('books/show', ['book' => $book]);
+        return view('books/show', [
+            'book'         => $book,
+            'loans'        => (new BorrowingModel())->filtered(['status' => 'all'])->where('borrowings.book_id', $id)->findAll(15),
+            'reservations' => (new ReservationModel())->filtered(['status' => 'open'])->where('reservations.book_id', $id)->findAll(),
+            'log'          => (new InventoryLogModel())->recent(15, $id),
+        ]);
     }
 
     public function new()
     {
-        return view('books/form', [
-            'book'       => null,
-            'categories' => $this->categories->orderBy('name')->findAll(),
-        ]);
+        return view('books/form', ['book' => null, 'categories' => $this->categories->orderBy('name')->findAll()]);
     }
 
     public function create()
@@ -70,10 +76,7 @@ class Books extends BaseController
             return redirect()->to('/books')->with('error', 'Book not found.');
         }
 
-        return view('books/form', [
-            'book'       => $book,
-            'categories' => $this->categories->orderBy('name')->findAll(),
-        ]);
+        return view('books/form', ['book' => $book, 'categories' => $this->categories->orderBy('name')->findAll()]);
     }
 
     public function update(int $id)
@@ -85,11 +88,15 @@ class Books extends BaseController
         return $this->persist($id);
     }
 
+    /** Head Librarian only. Titles with circulation history are kept for the records. */
     public function delete(int $id)
     {
         $book = $this->books->find($id);
         if (! $book) {
             return redirect()->to('/books')->with('error', 'Book not found.');
+        }
+        if ((new BorrowingModel())->where('book_id', $id)->countAllResults() > 0) {
+            return redirect()->back()->with('error', '"' . $book['title'] . '" has borrowing history, so it can\'t be deleted. Remove its copies in Inventory Management instead.');
         }
 
         $this->books->delete($id);
@@ -97,22 +104,6 @@ class Books extends BaseController
         return redirect()->to('/books')->with('success', '"' . $book['title'] . '" was deleted.');
     }
 
-    /** Quick +/- stock adjustment from the list (librarian/admin). */
-    public function adjustStock(int $id)
-    {
-        $book = $this->books->find($id);
-        if (! $book) {
-            return redirect()->to('/books')->with('error', 'Book not found.');
-        }
-
-        $delta = (int) $this->request->getPost('delta');
-        $new   = max(0, (int) $book['stock_count'] + $delta);
-        $this->books->update($id, ['stock_count' => $new]);
-
-        return redirect()->back()->with('success', '"' . $book['title'] . '" stock is now ' . $new . '.');
-    }
-
-    /** Shared create/update logic. */
     private function persist(?int $id)
     {
         $input         = $this->request->getPost();
@@ -125,20 +116,22 @@ class Books extends BaseController
             'category_id'      => 'permit_empty|is_natural_no_zero|is_not_unique[categories.id]',
             'publisher'        => 'permit_empty|max_length[150]',
             'publication_year' => 'permit_empty|integer|greater_than_equal_to[1000]|less_than_equal_to[' . ((int) date('Y') + 1) . ']',
-            'stock_count'      => 'required|is_natural|less_than_equal_to[100000]',
+            'shelf_location'   => 'permit_empty|max_length[50]',
             'description'      => 'permit_empty|max_length[2000]',
         ];
+        if ($id === null) {
+            $rules['stock_count'] = 'required|is_natural|less_than_equal_to[10000]';
+        }
 
         $errors = $this->validateData($input, $rules) ? [] : $this->validator->getErrors();
 
         if (! isset($errors['isbn'])) {
             if (! isbn_is_valid($input['isbn'])) {
-                $errors['isbn'] = 'Enter a valid ISBN-10 or ISBN-13 (check digit must match).';
+                $errors['isbn'] = 'Enter a valid ISBN-10 or ISBN-13 (the check digit must match).';
             } elseif ($this->books->isbnExists($input['isbn'], $id)) {
                 $errors['isbn'] = 'A book with this ISBN already exists.';
             }
         }
-
         if ($errors) {
             return redirect()->back()->withInput()->with('errors', $errors);
         }
@@ -150,18 +143,25 @@ class Books extends BaseController
             'category_id'      => ($input['category_id'] ?? '') !== '' ? (int) $input['category_id'] : null,
             'publisher'        => trim((string) ($input['publisher'] ?? '')) ?: null,
             'publication_year' => ($input['publication_year'] ?? '') !== '' ? (int) $input['publication_year'] : null,
-            'stock_count'      => (int) $input['stock_count'],
+            'shelf_location'   => trim((string) ($input['shelf_location'] ?? '')) ?: null,
             'description'      => trim((string) ($input['description'] ?? '')) ?: null,
         ];
 
         if ($id === null) {
-            $this->books->insert($data);
-            $message = 'Book added.';
-        } else {
-            $this->books->update($id, $data);
-            $message = 'Book updated.';
+            $data['stock_count'] = (int) $input['stock_count'];
+            $newId               = (int) $this->books->insert($data, true);
+            if ($data['stock_count'] > 0) {
+                (new InventoryLogModel())->insert([
+                    'book_id' => $newId, 'change' => $data['stock_count'], 'reason' => 'initial',
+                    'stock_after' => $data['stock_count'], 'notes' => 'Added to catalog', 'user_id' => session()->get('userId'),
+                ]);
+            }
+
+            return redirect()->to('/books/' . $newId)->with('success', '"' . $data['title'] . '" was added to the collection.');
         }
 
-        return redirect()->to('/books')->with('success', $message);
+        $this->books->update($id, $data);
+
+        return redirect()->to('/books/' . $id)->with('success', 'Book details updated.');
     }
 }

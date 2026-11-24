@@ -5,53 +5,105 @@ use CodeIgniter\Router\RouteCollection;
 /**
  * @var RouteCollection $routes
  *
- * Filter alias "role" must be registered in app/Config/Filters.php (see README).
- *   role                   -> any logged-in user
- *   role:admin,librarian   -> staff only
- *   role:admin             -> admins only
+ * User levels (filter "role", see app/Filters/RoleFilter.php):
+ *   role                           -> any logged-in user
+ *   role:head_librarian,librarian  -> library staff
+ *   role:head_librarian            -> head librarian only
+ *   role:student                   -> students only
  */
 
-// ---- Public -----------------------------------------------------------
-$routes->get('login', 'Auth::login');
-$routes->post('login', 'Auth::attempt');
-$routes->get('register', 'Auth::register');
-$routes->post('register', 'Auth::store');
-$routes->get('logout', 'Auth::logout');
+$staff = 'role:head_librarian,librarian';
+$head  = 'role:head_librarian';
 
-// ---- Any logged-in user (member, librarian, admin) -------------------
+// ---- Public -----------------------------------------------------------
+$routes->get('/', 'Home::index');
+$routes->get('about', 'Home::about');
+$routes->get('login', 'Home::index');
+$routes->post('login', 'Auth::attempt');
+$routes->get('signup', 'Auth::signup');
+$routes->post('signup', 'Auth::store');
+$routes->get('forgot-password', 'Auth::forgot');
+$routes->post('logout', 'Auth::logout');
+$routes->get('catalog', 'Catalog::index');
+$routes->get('catalog/(:num)', 'Catalog::show/$1');
+
+// ---- Any logged-in user -------------------------------------------------
 $routes->group('', ['filter' => 'role'], static function ($routes) {
-    $routes->get('/', 'Dashboard::index');
-    $routes->get('books', 'Books::index');
+    $routes->get('dashboard', 'Dashboard::index');
+    $routes->get('account', 'Account::index');
+    $routes->post('account/profile', 'Account::profile');
+    $routes->post('account/password', 'Account::password');
 });
 
-// ---- Staff: librarian + admin ----------------------------------------
-// Declared before books/(:num) so "books/new" is never treated as an id.
-$routes->group('', ['filter' => 'role:admin,librarian'], static function ($routes) {
-    $routes->get('books/new', 'Books::new');
-    $routes->post('books/create', 'Books::create');
-    $routes->get('books/(:num)/edit', 'Books::edit/$1');
-    $routes->post('books/(:num)/update', 'Books::update/$1');
+// ---- Students -------------------------------------------------------------
+$routes->group('', ['filter' => 'role:student'], static function ($routes) {
+    $routes->post('catalog/(:num)/reserve', 'Catalog::reserve/$1');
+    $routes->get('my/loans', 'My::loans');
+    $routes->get('my/reservations', 'My::reservations');
+    $routes->post('my/reservations/(:num)/cancel', 'My::cancelReservation/$1');
+    $routes->get('my/fines', 'My::fines');
+});
+
+// ---- Head librarian only (declared before the (:num) routes below) ---------
+$routes->group('', ['filter' => $head], static function ($routes) {
     $routes->post('books/(:num)/delete', 'Books::delete/$1');
-    $routes->post('books/(:num)/stock', 'Books::adjustStock/$1');
 
     $routes->get('categories', 'Categories::index');
-    $routes->get('categories/new', 'Categories::new');
     $routes->post('categories/create', 'Categories::create');
-    $routes->get('categories/(:num)/edit', 'Categories::edit/$1');
     $routes->post('categories/(:num)/update', 'Categories::update/$1');
     $routes->post('categories/(:num)/delete', 'Categories::delete/$1');
+
+    $routes->get('members/(:num)/edit', 'Members::edit/$1');
+    $routes->post('members/(:num)/update', 'Members::update/$1');
+    $routes->post('members/(:num)/status', 'Members::toggleStatus/$1');
+    $routes->post('members/(:num)/delete', 'Members::delete/$1');
+
+    $routes->post('inventory/adjust', 'Inventory::adjust');
+
+    $routes->post('fines/create', 'Fines::create');
+    $routes->post('fines/(:num)/waive', 'Fines::waive/$1');
+    $routes->post('fines/(:num)/delete', 'Fines::delete/$1');
+
+    $routes->get('staff', 'Staff::index');
+    $routes->get('staff/new', 'Staff::new');
+    $routes->post('staff/create', 'Staff::create');
+    $routes->get('staff/(:num)/edit', 'Staff::edit/$1');
+    $routes->post('staff/(:num)/update', 'Staff::update/$1');
+    $routes->post('staff/(:num)/status', 'Staff::toggleStatus/$1');
+    $routes->post('staff/(:num)/delete', 'Staff::delete/$1');
+
+    $routes->get('settings', 'Settings::index');
+    $routes->post('settings', 'Settings::save');
 });
 
-$routes->group('', ['filter' => 'role'], static function ($routes) {
+// ---- Library staff (head librarian + librarian staff) -------------------
+$routes->group('', ['filter' => $staff], static function ($routes) {
+    $routes->get('books', 'Books::index');
+    $routes->get('books/new', 'Books::new');
+    $routes->post('books/create', 'Books::create');
     $routes->get('books/(:num)', 'Books::show/$1');
-});
+    $routes->get('books/(:num)/edit', 'Books::edit/$1');
+    $routes->post('books/(:num)/update', 'Books::update/$1');
 
-// ---- Admin only -------------------------------------------------------
-$routes->group('', ['filter' => 'role:admin'], static function ($routes) {
-    $routes->get('users', 'Users::index');
-    $routes->get('users/new', 'Users::new');
-    $routes->post('users/create', 'Users::create');
-    $routes->get('users/(:num)/edit', 'Users::edit/$1');
-    $routes->post('users/(:num)/update', 'Users::update/$1');
-    $routes->post('users/(:num)/delete', 'Users::delete/$1');
+    $routes->get('circulation', 'Circulation::index');
+    $routes->post('circulation/issue', 'Circulation::issue');
+    $routes->post('circulation/(:num)/return', 'Circulation::receive/$1');
+
+    $routes->get('reservations', 'Reservations::index');
+    $routes->post('reservations/create', 'Reservations::create');
+    $routes->post('reservations/(:num)/issue', 'Reservations::issue/$1');
+    $routes->post('reservations/(:num)/cancel', 'Reservations::cancel/$1');
+
+    $routes->get('members', 'Members::index');
+    $routes->get('members/new', 'Members::new');
+    $routes->post('members/create', 'Members::create');
+    $routes->get('members/(:num)', 'Members::show/$1');
+
+    $routes->get('inventory', 'Inventory::index');
+
+    $routes->get('fines', 'Fines::index');
+    $routes->post('fines/(:num)/pay', 'Fines::pay/$1');
+
+    $routes->get('reports', 'Reports::index');
+    $routes->get('reports/export/(:segment)', 'Reports::export/$1');
 });

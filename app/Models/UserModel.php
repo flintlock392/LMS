@@ -6,12 +6,26 @@ use CodeIgniter\Model;
 
 class UserModel extends Model
 {
-    public const ROLES = ['admin', 'librarian', 'member'];
+    public const HEAD      = 'head_librarian';
+    public const LIBRARIAN = 'librarian';
+    public const STUDENT   = 'student';
+
+    public const ROLES       = [self::HEAD, self::LIBRARIAN, self::STUDENT];
+    public const STAFF_ROLES = [self::HEAD, self::LIBRARIAN];
+
+    public const ROLE_LABELS = [
+        self::HEAD      => 'Head Librarian',
+        self::LIBRARIAN => 'Librarian Staff',
+        self::STUDENT   => 'Student',
+    ];
 
     protected $table         = 'users';
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
-    protected $allowedFields = ['name', 'email', 'password', 'role'];
+    protected $allowedFields = [
+        'id_number', 'name', 'email', 'phone', 'password', 'role', 'status',
+        'course', 'year_level', 'position', 'last_login_at',
+    ];
     protected $useTimestamps = true;
 
     protected $beforeInsert = ['hashPassword'];
@@ -31,8 +45,56 @@ class UserModel extends Model
         return $data;
     }
 
+    /** Find by Student/Staff ID number, or by email as a fallback. */
+    public function findByLogin(string $login): ?array
+    {
+        $login = trim($login);
+        if ($login === '') {
+            return null;
+        }
+
+        $field = str_contains($login, '@') ? 'email' : 'id_number';
+        $value = $field === 'email' ? strtolower($login) : strtoupper($login);
+
+        return $this->where($field, $value)->first();
+    }
+
     public function findByEmail(string $email): ?array
     {
         return $this->where('email', strtolower(trim($email)))->first();
+    }
+
+    /** Filtered list for the user / staff management screens. */
+    public function search(array $roles, string $q = '', string $status = ''): self
+    {
+        $this->whereIn('role', $roles);
+
+        if ($q !== '') {
+            $this->groupStart()
+                ->like('name', $q)
+                ->orLike('id_number', $q)
+                ->orLike('email', $q)
+                ->orLike('course', $q)
+                ->groupEnd();
+        }
+        if (in_array($status, ['active', 'suspended'], true)) {
+            $this->where('status', $status);
+        }
+
+        return $this->orderBy('name', 'ASC');
+    }
+
+    /** Active students for the circulation drop-downs. */
+    public function activeBorrowers(): array
+    {
+        return $this->select('id, id_number, name')
+            ->where('status', 'active')
+            ->orderBy('name', 'ASC')
+            ->findAll();
+    }
+
+    public static function roleLabel(?string $role): string
+    {
+        return self::ROLE_LABELS[$role] ?? ucfirst((string) $role);
     }
 }
