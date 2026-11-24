@@ -1,0 +1,86 @@
+<?php
+
+namespace App\Database\Seeds;
+
+use App\Models\InventoryLogModel;
+use App\Models\UserModel;
+use CodeIgniter\Database\Seeder;
+
+/**
+ * Builds Activity Log entries from records that existed before the log did
+ * (loans, returns, fines, reservations, inventory changes, accounts).
+ * Safe to run more than once: it does nothing if the log already has entries.
+ *
+ * Run:  php spark db:seed ActivityBackfillSeeder
+ */
+class ActivityBackfillSeeder extends Seeder
+{
+    public function run()
+    {
+        $db = $this->db;
+        if ($db->table('activity_logs')->countAllResults() > 0) {
+            return;
+        }
+
+        $rows = [];
+        $add  = static function (?string $at, ?int $user, string $cat, string $action, string $desc, ?string $type = null, ?int $id = null) use (&$rows) {
+            if ($at) {
+                $rows[] = ['created_at' => $at, 'user_id' => $user ?: null, 'category' => $cat, 'action' => $action,
+                    'description' => mb_substr($desc, 0, 255), 'subject_type' => $type, 'subject_id' => $id, 'ip_address' => null];
+            }
+        };
+
+        foreach ($db->table('users')->get()->getResultArray() as $u) {
+            $isStaff = in_array($u['role'], UserModel::STAFF_ROLES, true);
+            $add($u['created_at'], null, $isStaff ? 'staff' : 'user', $isStaff ? 'added' : 'registered',
+                ($isStaff ? 'Added ' . UserModel::roleLabel($u['role']) . ' ' : 'Registered student ') . $u['name'] . ' (' . $u['id_number'] . ')', 'user', (int) $u['id']);
+        }
+
+        $logs = $db->table('inventory_logs l')->select('l.*, b.title')->join('books b', 'b.id = l.book_id')->get()->getResultArray();
+        foreach ($logs as $l) {
+            $n = abs((int) $l['change']);
+            $add($l['created_at'], (int) $l['user_id'], $l['reason'] === 'initial' ? 'book' : 'inventory', $l['reason'] === 'initial' ? 'added' : ($l['change'] > 0 ? 'added' : 'removed'),
+                $l['reason'] === 'initial'
+                    ? 'Added "' . $l['title'] . '" to the catalog with ' . $n . ' cop' . ($n === 1 ? 'y' : 'ies')
+                    : ($l['change'] > 0 ? 'Added ' : 'Removed ') . $n . ' cop' . ($n === 1 ? 'y' : 'ies') . ' of "' . $l['title'] . '" (' . (InventoryLogModel::LABELS[$l['reason']] ?? $l['reason']) . ')',
+                'book', (int) $l['book_id']);
+        }
+
+        $loans = $db->table('borrowings br')->select('br.*, b.title, u.name, u.id_number')
+            ->join('books b', 'b.id = br.book_id')->join('users u', 'u.id = br.user_id')->get()->getResultArray();
+        foreach ($loans as $l) {
+            $add($l['borrowed_at'], (int) $l['issued_by'], 'circulation', 'issued', 'Issued "' . $l['title'] . '" to ' . $l['name'] . ' (' . $l['id_number'] . '), due ' . date('M j, Y', strtotime($l['due_date'])), 'borrowing', (int) $l['id']);
+            if ($l['status'] !== 'borrowed') {
+                $add($l['returned_at'], (int) $l['received_by'], 'circulation', $l['status'] === 'lost' ? 'lost' : 'returned',
+                    ($l['status'] === 'lost' ? 'Marked "' . $l['title'] . '" as lost by ' : 'Received "' . $l['title'] . '" from ') . $l['name'], 'borrowing', (int) $l['id']);
+            }
+        }
+
+        $fines = $db->table('fines f')->select('f.*, u.name, u.id_number')->join('users u', 'u.id = f.user_id')->get()->getResultArray();
+        foreach ($fines as $f) {
+            $amount = '₱' . number_format((float) $f['amount'], 2);
+            $add($f['created_at'], (int) $f['created_by'], 'fine', 'added', 'Charged ' . $f['name'] . ' (' . $f['id_number'] . ') a ' . $f['reason'] . ' fine of ' . $amount, 'fine', (int) $f['id']);
+            if ($f['status'] === 'paid') {
+                $add($f['paid_at'], (int) $f['processed_by'], 'fine', 'paid', 'Recorded payment of ' . $amount . ' from ' . $f['name'] . ' (' . $f['id_number'] . ')', 'fine', (int) $f['id']);
+            } elseif ($f['status'] === 'waived') {
+                $add($f['updated_at'], (int) $f['processed_by'], 'fine', 'waived', 'Waived ' . $amount . ' fine for ' . $f['name'], 'fine', (int) $f['id']);
+            }
+        }
+
+        $res = $db->table('reservations r')->select('r.*, b.title, u.name')
+            ->join('books b', 'b.id = r.book_id')->join('users u', 'u.id = r.user_id')->get()->getResultArray();
+        foreach ($res as $r) {
+            $add($r['reserved_at'], (int) ($r['handled_by'] ?: $r['user_id']), 'reservation', 'placed', $r['name'] . ' reserved "' . $r['title'] . '"', 'reservation', (int) $r['id']);
+            $add($r['ready_at'], null, 'reservation', 'ready', 'System: a copy of "' . $r['title'] . '" is now held for ' . $r['name'], 'reservation', (int) $r['id']);
+            if (in_array($r['status'], ['cancelled', 'expired'], true)) {
+                $add($r['closed_at'], $r['status'] === 'cancelled' ? (int) $r['handled_by'] : null, 'reservation', $r['status'],
+                    $r['status'] === 'cancelled' ? 'Cancelled ' . $r['name'] . '\'s reservation for "' . $r['title'] . '"' : 'System: ' . $r['name'] . '\'s hold on "' . $r['title'] . '" expired', 'reservation', (int) $r['id']);
+            }
+        }
+
+        usort($rows, static fn ($a, $b) => strcmp($a['created_at'], $b['created_at']));
+        if ($rows) {
+            $db->table('activity_logs')->insertBatch($rows);
+        }
+    }
+}

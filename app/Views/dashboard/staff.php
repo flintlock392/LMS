@@ -6,13 +6,13 @@
 
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-xl-3">
-        <a class="stat" href="<?= site_url('circulation') ?>">
+        <a class="stat" href="<?= site_url('library?tab=borrowed') ?>">
             <span class="icon blue"><i class="bi bi-journal-arrow-up"></i></span>
             <span><span class="value d-block"><?= $loans['active'] ?></span><span class="label">Books on loan</span></span>
         </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <a class="stat" href="<?= site_url('circulation?status=overdue') ?>">
+        <a class="stat" href="<?= site_url('library?tab=overdue') ?>">
             <span class="icon bad"><i class="bi bi-alarm"></i></span>
             <span><span class="value d-block"><?= $loans['overdue'] ?></span><span class="label">Overdue</span></span>
         </a>
@@ -32,7 +32,7 @@
 
     <?php if (is_head()): ?>
         <div class="col-sm-6 col-xl-3">
-            <a class="stat" href="<?= site_url('books') ?>">
+            <a class="stat" href="<?= site_url('library?tab=collections') ?>">
                 <span class="icon"><i class="bi bi-book"></i></span>
                 <span><span class="value d-block"><?= number_format($bookStats['titles']) ?></span><span class="label">Titles · <?= number_format($bookStats['copies']) ?> copies</span></span>
             </a>
@@ -76,7 +76,7 @@
 </div>
 
 <div class="d-flex flex-wrap gap-2 mb-4">
-    <a class="btn btn-nook" href="<?= site_url('circulation') ?>"><i class="bi bi-arrow-left-right me-1"></i> Issue / return a book</a>
+    <a class="btn btn-nook" href="<?= site_url('library?tab=borrowed') ?>"><i class="bi bi-arrow-left-right me-1"></i> Issue / return a book</a>
     <a class="btn btn-outline-nook" href="<?= site_url('members/new') ?>"><i class="bi bi-person-plus me-1"></i> Register a student</a>
     <a class="btn btn-outline-nook" href="<?= site_url('books/new') ?>"><i class="bi bi-plus-lg me-1"></i> Add a book</a>
 </div>
@@ -85,7 +85,7 @@
     <div class="col-xl-7">
         <div class="panel">
             <h2 class="panel-title"><i class="bi bi-alarm text-danger"></i> Overdue books
-                <a class="ms-auto small" href="<?= site_url('circulation?status=overdue') ?>">View all</a></h2>
+                <a class="ms-auto small" href="<?= site_url('library?tab=overdue') ?>">View all</a></h2>
             <?php if (! $overdue): ?>
                 <div class="empty"><i class="bi bi-emoji-smile"></i>Nothing is overdue.</div>
             <?php else: ?>
@@ -168,7 +168,7 @@
 
         <div class="panel">
             <h2 class="panel-title"><i class="bi bi-box-seam"></i> Titles with no copies available
-                <a class="ms-auto small" href="<?= site_url('inventory') ?>">Inventory</a></h2>
+                <a class="ms-auto small" href="<?= site_url('library?tab=books') ?>">Books</a></h2>
             <?php if (! $lowStock): ?>
                 <div class="empty"><i class="bi bi-check2-circle"></i>Every title has a copy on the shelf.</div>
             <?php else: ?>

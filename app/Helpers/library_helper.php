@@ -166,21 +166,43 @@ if (! function_exists('brand_image')) {
     }
 }
 
+if (! function_exists('log_activity')) {
+    /**
+     * Record an action in the audit trail (Book & Return → Activity Log).
+     * $userId defaults to the logged-in user; pass 0 for actions the system did on its own.
+     */
+    function log_activity(string $category, string $action, string $description, ?string $subjectType = null, ?int $subjectId = null, ?int $userId = null): void
+    {
+        $userId ??= session()->get('userId') ? (int) session()->get('userId') : null;
+
+        (new \App\Models\ActivityLogModel())->insert([
+            'user_id'      => $userId ?: null,
+            'category'     => $category,
+            'action'       => $action,
+            'description'  => mb_substr($description, 0, 255),
+            'subject_type' => $subjectType,
+            'subject_id'   => $subjectId,
+            'ip_address'   => is_cli() ? null : service('request')->getIPAddress(),
+            'created_at'   => date('Y-m-d H:i:s'),
+        ]);
+    }
+}
+
 if (! function_exists('nav_items')) {
     /**
-     * Sidebar menu for each user level: [label, bootstrap-icon, path].
-     * Labels follow the module names agreed for each role.
+     * Sidebar menu for each user level: [label, bootstrap-icon, path, other paths that belong to it].
+     * Books, Borrowing & Returning and Inventory are one module ("Book & Return") with tabs.
      */
     function nav_items(?string $role): array
     {
+        $collection = ['books', 'circulation', 'inventory', 'categories', 'activity'];
+
         return match ($role) {
             UserModel::HEAD => [
                 ['Dashboard', 'speedometer2', 'dashboard'],
-                ['Book Management', 'book', 'books'],
-                ['Borrowing & Returning', 'arrow-left-right', 'circulation'],
+                ['Library', 'book', 'library', $collection],
                 ['Reservations', 'bookmark-check', 'reservations'],
                 ['User Management', 'people', 'members'],
-                ['Inventory Management', 'box-seam', 'inventory'],
                 ['Fine Management', 'cash-coin', 'fines'],
                 ['Reports & Analytics', 'bar-chart-line', 'reports'],
                 ['Staff Management', 'person-badge', 'staff'],
@@ -188,11 +210,9 @@ if (! function_exists('nav_items')) {
             ],
             UserModel::LIBRARIAN => [
                 ['Dashboard', 'speedometer2', 'dashboard'],
-                ['Book Collection', 'book', 'books'],
-                ['Borrowing & Returning', 'arrow-left-right', 'circulation'],
+                ['Library', 'book', 'library', $collection],
                 ['Reservations', 'bookmark-check', 'reservations'],
                 ['User Registration', 'person-plus', 'members'],
-                ['Inventory Monitoring', 'box-seam', 'inventory'],
                 ['Fine Processing', 'cash-coin', 'fines'],
                 ['Reports', 'file-earmark-bar-graph', 'reports'],
             ],
@@ -212,9 +232,9 @@ if (! function_exists('module_title')) {
     /** The role-specific name of a module (e.g. "fines" => "Fine Processing" for staff). */
     function module_title(string $path): string
     {
-        foreach (nav_items(current_role()) as [$label, , $p]) {
-            if ($p === $path) {
-                return $label;
+        foreach (nav_items(current_role()) as $item) {
+            if ($item[2] === $path || in_array($path, $item[3] ?? [], true)) {
+                return $item[0];
             }
         }
 

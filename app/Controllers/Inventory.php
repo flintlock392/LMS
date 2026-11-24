@@ -13,28 +13,6 @@ use RuntimeException;
  */
 class Inventory extends BaseController
 {
-    public function index()
-    {
-        $filters = [
-            'q'            => trim((string) $this->request->getGet('q')),
-            'availability' => (string) $this->request->getGet('availability'),
-            'sort'         => 'available',
-            'dir'          => 'asc',
-        ];
-
-        $model = new BookModel();
-
-        return view('inventory/index', [
-            'books'   => $model->filtered($filters)->paginate(15),
-            'pager'   => $model->pager,
-            'filters' => $filters,
-            'stats'   => (new BookModel())->stats(),
-            'log'     => (new InventoryLogModel())->recent(12),
-            'all'     => is_head() ? (new BookModel())->forSelect() : [],
-        ]);
-    }
-
-    /** Head Librarian only. */
     public function adjust()
     {
         $direction = (string) $this->request->getPost('direction');
@@ -61,6 +39,6 @@ class Inventory extends BaseController
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
 
-        return redirect()->to('/inventory')->with('success', 'Inventory updated. The title now has ' . $new . ' cop' . ($new === 1 ? 'y' : 'ies') . '.');
+        return redirect()->to('/library?tab=books')->with('success', 'Inventory updated. The title now has ' . $new . ' cop' . ($new === 1 ? 'y' : 'ies') . '.');
     }
 }

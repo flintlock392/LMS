@@ -28,6 +28,8 @@ class Auth extends BaseController
         $user  = $users->findByLogin((string) $this->request->getPost('login'));
 
         if (! $user || ! password_verify((string) $this->request->getPost('password'), $user['password'])) {
+            log_activity('auth', 'login_failed', 'Failed login attempt for "' . mb_substr(trim((string) $this->request->getPost('login')), 0, 60) . '"', 'user', $user['id'] ?? null, 0);
+
             return redirect()->to('/login')->withInput()->with('error', 'Incorrect ID number or password.');
         }
         if ($user['status'] !== 'active') {
@@ -36,6 +38,7 @@ class Auth extends BaseController
         }
 
         $users->update($user['id'], ['last_login_at' => date('Y-m-d H:i:s')]);
+        log_activity('auth', 'login', $user['name'] . ' signed in as ' . role_label($user['role']), 'user', (int) $user['id'], (int) $user['id']);
 
         session()->regenerate(true);
         session()->set([
@@ -80,7 +83,7 @@ class Auth extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        (new UserModel())->insert([
+        $newId = (int) (new UserModel())->insert([
             'id_number'  => strtoupper(trim((string) $this->request->getPost('id_number'))),
             'name'       => trim((string) $this->request->getPost('name')),
             'email'      => strtolower(trim((string) $this->request->getPost('email'))),
@@ -89,7 +92,8 @@ class Auth extends BaseController
             'password'   => (string) $this->request->getPost('password'),
             'role'       => UserModel::STUDENT,
             'status'     => 'active',
-        ]);
+        ], true);
+        log_activity('user', 'signed_up', trim((string) $this->request->getPost('name')) . ' (' . strtoupper(trim((string) $this->request->getPost('id_number'))) . ') created a student account online', 'user', $newId, $newId);
 
         return redirect()->to('/login')->with('success', 'Account created! Log in with your student number.');
     }
@@ -101,6 +105,9 @@ class Auth extends BaseController
 
     public function logout()
     {
+        if (session()->get('isLoggedIn')) {
+            log_activity('auth', 'logout', session()->get('name') . ' signed out', 'user', (int) session()->get('userId'));
+        }
         session()->destroy();
 
         return redirect()->to('/login')->with('success', 'You have been logged out.');

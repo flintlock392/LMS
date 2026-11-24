@@ -45,7 +45,7 @@
     <div class="col-lg-8">
         <div class="panel">
             <h3 class="panel-title"><i class="bi bi-journal-bookmark"></i> Borrowing history
-                <a class="ms-auto small" href="<?= site_url('circulation?status=all&q=' . urlencode($user['id_number'])) ?>">Open in Borrowing</a></h3>
+                <a class="ms-auto small" href="<?= site_url('library?tab=all&q=' . urlencode($user['id_number'])) ?>">Open in Library</a></h3>
             <?php if (! $loans): ?>
                 <div class="empty"><i class="bi bi-inbox"></i>No books borrowed yet.</div>
             <?php else: ?>

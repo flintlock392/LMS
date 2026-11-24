@@ -137,5 +137,8 @@ class LibrarySeeder extends Seeder
         $reservations = new ReservationModel();
         $reservations->insert(['book_id' => $bookIds['9780596517748'], 'user_id' => $userIds['2024-00001'], 'status' => 'pending', 'reserved_at' => $day(-1)]);
         $reservations->insert(['book_id' => $bookIds['9780062316097'], 'user_id' => $userIds['2024-00002'], 'status' => 'ready', 'reserved_at' => $day(-2), 'ready_at' => $day(-1), 'expires_at' => $day(1)]);
+
+        // Turn the sample history above into Activity Log entries.
+        $this->call('ActivityBackfillSeeder');
     }
 }

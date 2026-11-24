@@ -94,7 +94,10 @@ a:hover { color: var(--brown-900); }
     font-family: var(--font-display); color: #f6e9da; font-size: clamp(1.4rem, 2.5vw, 1.9rem);
     line-height: 1.1; margin: .25rem 0 0 .6rem;
 }
-.hero-art { max-width: 100%; height: auto; display: block; margin-top: -.5rem; }
+.hero-art {
+    width: min(100%, 600px); height: auto; display: block; margin-top: -.5rem;
+    filter: drop-shadow(0 18px 24px rgba(30, 16, 12, .35));
+}
 
 .login-card {
     background: var(--cream-100); color: var(--ink); border-radius: 18px;
@@ -239,6 +242,53 @@ a.stat:hover { border-color: var(--cream-300); box-shadow: 0 4px 12px rgba(85,52
 .tabs-nook a .count { background: #ece5dc; border-radius: 999px; padding: 0 .45rem; font-size: .72rem; margin-left: .25rem; }
 
 .alert { border-radius: 12px; }
+
+/* Library page tabs (All · Collections · Borrowed · Overdue · Returned · Lost · Books) */
+.library-tabs { margin-bottom: 1.1rem; }
+.library-tabs a { font-size: 1rem; font-weight: 500; padding: .55rem 1rem; }
+.library-tabs a .count { background: #ead9c6; color: var(--brown-700); }
+.library-tabs a .count-bad { background: #f6dede; color: #8f2f2f; }
+.library-tabs a.active .count { background: var(--brown-600); color: #fff; }
+.date-range .search-box { background: #f1efec; }
+
+/* Book & Return module tabs */
+.module-tabs {
+    display: flex; flex-wrap: wrap; gap: .4rem; padding: .35rem;
+    background: #fffdf9; border: 1px solid #ecdcc4; border-radius: 999px; width: fit-content; max-width: 100%;
+}
+.module-tabs a {
+    display: inline-flex; align-items: center; gap: .45rem; padding: .5rem 1.1rem; border-radius: 999px;
+    color: var(--brown-700); text-decoration: none; font-weight: 500; font-size: .92rem;
+}
+.module-tabs a:hover { background: var(--cream-100); }
+.module-tabs a.active { background: var(--brown-600); color: #fff; }
+
+/* Date-range filter: labelled pickers + a sentence saying what is shown */
+.date-range { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; }
+.date-range .field { display: flex; flex-direction: column; gap: .2rem; }
+.date-range .field label { font-size: .75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin: 0; }
+.date-range .field input { min-width: 140px; }
+.date-range .field input[type="search"] { width: 170px; }
+.date-range .arrow { color: var(--muted); padding-bottom: .45rem; }
+.filter-summary {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-size: .85rem;
+    background: var(--cream-100); border-radius: 10px; padding: .5rem .8rem; margin-bottom: 1rem; color: var(--brown-700);
+}
+.filter-summary a { margin-left: auto; }
+
+/* Activity timeline */
+.activity-day { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+    margin: 1.25rem 0 .5rem; padding-bottom: .35rem; border-bottom: 1px solid #ecdcc4; }
+.activity-day:first-child { margin-top: 0; }
+.activity-item { display: grid; grid-template-columns: 64px 34px minmax(0, 1fr); gap: .75rem; align-items: start; padding: .55rem 0; border-bottom: 1px dashed #f1e6d6; }
+.activity-item .time { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; padding-top: .35rem; }
+.activity-item .ico { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--cream-100); color: var(--brown-600); }
+.activity-item .desc { font-size: .9rem; }
+.activity-item .who { font-size: .78rem; color: var(--muted); }
+.cat-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+.cat-chips a { font-size: .8rem; padding: .25rem .7rem; border-radius: 999px; background: #f3ebe0; color: var(--brown-700); text-decoration: none; }
+.cat-chips a.active { background: var(--brown-600); color: #fff; }
+.cat-chips a .n { font-weight: 600; margin-left: .25rem; }
 
 /* Simple horizontal bar charts (reports) */
 .hbar { display: grid; grid-template-columns: minmax(0, 1fr) 2fr auto; gap: .5rem .75rem; align-items: center; font-size: .85rem; }

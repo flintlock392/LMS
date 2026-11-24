@@ -2,7 +2,7 @@
 <?= $this->section('title') ?><?= esc($book['title']) ?><?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<a class="small d-inline-block mb-3" href="<?= site_url('books') ?>"><i class="bi bi-arrow-left"></i> <?= esc(module_title('books')) ?></a>
+<a class="small d-inline-block mb-3" href="<?= site_url('library?tab=collections') ?>"><i class="bi bi-arrow-left"></i> Library</a>
 
 <div class="row g-4">
     <div class="col-lg-5">

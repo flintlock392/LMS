@@ -68,6 +68,7 @@ class Members extends BaseController
         $data['status']   = 'active';
         $data['password'] = (string) $this->request->getPost('password');
         $id               = (int) $this->users->insert($data, true);
+        log_activity('user', 'registered', 'Registered student ' . $data['name'] . ' (' . $data['id_number'] . ')', 'user', $id);
 
         return redirect()->to('/members/' . $id)->with('success', $data['name'] . ' is registered. They can log in with student number ' . $data['id_number'] . '.');
     }
@@ -97,6 +98,8 @@ class Members extends BaseController
             $data['password'] = $password;
         }
         $this->users->update($id, $data);
+        log_activity('user', $password !== '' ? 'password_reset' : 'edited', ($password !== '' ? 'Edited and reset the password of ' : 'Edited the details of ')
+            . $data['name'] . ' (' . $data['id_number'] . ')', 'user', $id);
 
         return redirect()->to('/members/' . $id)->with('success', 'Student details saved' . ($password !== '' ? ' and password reset.' : '.'));
     }
@@ -109,6 +112,7 @@ class Members extends BaseController
         }
         $new = $user['status'] === 'active' ? 'suspended' : 'active';
         $this->users->update($id, ['status' => $new]);
+        log_activity('user', $new, ($new === 'suspended' ? 'Suspended ' : 'Reactivated ') . 'student ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
 
         return redirect()->back()->with('success', $user['name'] . ' is now ' . $new . '.');
     }
@@ -126,6 +130,7 @@ class Members extends BaseController
         }
 
         $this->users->delete($id);
+        log_activity('user', 'deleted', 'Deleted student account ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
 
         return redirect()->to('/members')->with('success', 'Student account deleted.');
     }

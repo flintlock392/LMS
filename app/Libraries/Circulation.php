@@ -101,6 +101,9 @@ class Circulation
 
         $db->transComplete();
 
+        log_activity('circulation', 'issued', 'Issued "' . $book['title'] . '" to ' . $user['name'] . ' (' . $user['id_number'] . '), due '
+            . fmt_date(date('Y-m-d', strtotime('+' . (int) $this->settings->value('loan_days') . ' days'))), 'borrowing', $id, $staffId);
+
         return $id;
     }
 
@@ -162,6 +165,17 @@ class Circulation
         if ($charged) {
             $message .= ' Fines charged: ' . implode(', ', $charged) . '.';
         }
+
+        $borrower = $this->users->find($loan['user_id']);
+        log_activity(
+            'circulation',
+            $condition === 'lost' ? 'lost' : 'returned',
+            ($condition === 'lost' ? 'Marked "' . $book['title'] . '" as lost by ' : 'Received "' . $book['title'] . '" from ')
+                . $borrower['name'] . ($condition === 'damaged' ? ' (damaged)' : '') . ($charged ? ' · fines: ' . implode(', ', $charged) : ''),
+            'borrowing',
+            $borrowingId,
+            $staffId
+        );
         if ($promoted) {
             $message .= ' It is now held for the next reservation in the queue.';
         }
@@ -220,6 +234,11 @@ class Circulation
             'handled_by'  => $actorId,
         ], true);
 
+        $description = $actorId === $userId
+            ? $user['name'] . ' reserved "' . $book['title'] . '" online'
+            : 'Reserved "' . $book['title'] . '" for ' . $user['name'] . ' (' . $user['id_number'] . ')';
+        log_activity('reservation', 'placed', $description, 'reservation', $id, $actorId);
+
         $this->promoteQueue($bookId);
 
         return $this->reservations->find($id);
@@ -240,6 +259,11 @@ class Circulation
             'closed_at'  => date('Y-m-d H:i:s'),
             'handled_by' => $actorId,
         ]);
+
+        $book = $this->books->find($r['book_id']);
+        $user = $this->users->find($r['user_id']);
+        log_activity('reservation', 'cancelled', 'Cancelled ' . ($actorId === (int) $r['user_id'] ? 'own reservation' : $user['name'] . '\'s reservation')
+            . ' for "' . $book['title'] . '"', 'reservation', $id, $actorId);
 
         if ($r['status'] === 'ready') {
             $this->promoteQueue((int) $r['book_id']);
@@ -267,6 +291,10 @@ class Circulation
                 'expires_at' => date('Y-m-d H:i:s', strtotime('+' . $holdDays . ' days')),
             ]);
             $promoted++;
+
+            $book = $this->books->find($bookId);
+            $user = $this->users->find($next['user_id']);
+            log_activity('reservation', 'ready', 'System: a copy of "' . $book['title'] . '" is now held for ' . $user['name'] . ' (next in queue)', 'reservation', (int) $next['id'], 0);
         }
 
         return $promoted;
@@ -280,6 +308,10 @@ class Circulation
 
         foreach ($expired as $r) {
             $this->reservations->update($r['id'], ['status' => 'expired', 'closed_at' => date('Y-m-d H:i:s')]);
+
+            $book = $this->books->find($r['book_id']);
+            $user = $this->users->find($r['user_id']);
+            log_activity('reservation', 'expired', 'System: ' . $user['name'] . ' did not collect "' . $book['title'] . '" in time; hold expired', 'reservation', (int) $r['id'], 0);
         }
         foreach (array_unique(array_column($expired, 'book_id')) as $bookId) {
             $this->promoteQueue((int) $bookId);
@@ -338,6 +370,10 @@ class Circulation
             'notes'       => $notes !== '' ? mb_substr($notes, 0, 255) : null,
             'user_id'     => $staffId,
         ]);
+
+        log_activity('inventory', $change > 0 ? 'added' : 'removed', ($change > 0 ? 'Added ' : 'Removed ') . abs($change) . ' cop' . (abs($change) === 1 ? 'y' : 'ies')
+            . ($change > 0 ? ' to "' : ' of "') . $book['title'] . '" (' . (InventoryLogModel::LABELS[$reason] ?? $reason) . ') · now ' . $new
+            . ($notes !== '' ? ' · ' . $notes : ''), 'book', $bookId, $staffId);
 
         if ($change > 0) {
             $this->promoteQueue($bookId);

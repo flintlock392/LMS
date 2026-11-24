@@ -74,18 +74,23 @@ $routes->group('', ['filter' => $head], static function ($routes) {
 
     $routes->get('settings', 'Settings::index');
     $routes->post('settings', 'Settings::save');
+
+    // Book & Return → Activity Log (actions between two dates)
+    $routes->get('activity', 'Activity::index');
+    $routes->get('activity/export', 'Activity::export');
 });
 
 // ---- Library staff (head librarian + librarian staff) -------------------
 $routes->group('', ['filter' => $staff], static function ($routes) {
-    $routes->get('books', 'Books::index');
+    $routes->get('library', 'Library::index');
+    $routes->get('books', 'Library::legacy/books');
     $routes->get('books/new', 'Books::new');
     $routes->post('books/create', 'Books::create');
     $routes->get('books/(:num)', 'Books::show/$1');
     $routes->get('books/(:num)/edit', 'Books::edit/$1');
     $routes->post('books/(:num)/update', 'Books::update/$1');
 
-    $routes->get('circulation', 'Circulation::index');
+    $routes->get('circulation', 'Library::legacy/circulation');
     $routes->post('circulation/issue', 'Circulation::issue');
     $routes->post('circulation/(:num)/return', 'Circulation::receive/$1');
 
@@ -99,7 +104,7 @@ $routes->group('', ['filter' => $staff], static function ($routes) {
     $routes->post('members/create', 'Members::create');
     $routes->get('members/(:num)', 'Members::show/$1');
 
-    $routes->get('inventory', 'Inventory::index');
+    $routes->get('inventory', 'Library::legacy/inventory');
 
     $routes->get('fines', 'Fines::index');
     $routes->post('fines/(:num)/pay', 'Fines::pay/$1');

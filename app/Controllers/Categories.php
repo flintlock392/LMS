@@ -42,6 +42,7 @@ class Categories extends BaseController
 
         // The foreign key sets books.category_id to NULL, so books are kept as "uncategorized".
         $this->categories->delete($id);
+        log_activity('book', 'category_deleted', 'Deleted category "' . $category['name'] . '"', 'category', $id);
 
         return redirect()->to('/categories')->with('success', 'Category "' . $category['name'] . '" deleted. Its books are now uncategorized.');
     }
@@ -62,11 +63,13 @@ class Categories extends BaseController
         $data = ['name' => $name, 'description' => trim((string) $this->request->getPost('description')) ?: null];
 
         if ($id === null) {
-            $this->categories->insert($data);
+            $newId = (int) $this->categories->insert($data, true);
+            log_activity('book', 'category_added', 'Added category "' . $name . '"', 'category', $newId);
 
             return redirect()->to('/categories')->with('success', 'Category added.');
         }
         $this->categories->update($id, $data);
+        log_activity('book', 'category_edited', 'Edited category "' . $name . '"', 'category', $id);
 
         return redirect()->to('/categories')->with('success', 'Category updated.');
     }

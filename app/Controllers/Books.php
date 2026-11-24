@@ -24,31 +24,11 @@ class Books extends BaseController
         $this->categories = new CategoryModel();
     }
 
-    public function index()
-    {
-        $filters = [
-            'q'            => trim((string) $this->request->getGet('q')),
-            'category_id'  => (string) $this->request->getGet('category_id'),
-            'author'       => trim((string) $this->request->getGet('author')),
-            'availability' => (string) $this->request->getGet('availability'),
-            'sort'         => (string) $this->request->getGet('sort'),
-            'dir'          => (string) $this->request->getGet('dir'),
-        ];
-
-        return view('books/index', [
-            'books'      => $this->books->filtered($filters)->paginate(12),
-            'pager'      => $this->books->pager,
-            'filters'    => $filters,
-            'categories' => $this->categories->orderBy('name')->findAll(),
-            'stats'      => (new BookModel())->stats(),
-        ]);
-    }
-
     public function show(int $id)
     {
         $book = $this->books->findWithAvailability($id);
         if (! $book) {
-            return redirect()->to('/books')->with('error', 'Book not found.');
+            return redirect()->to('/library?tab=collections')->with('error', 'Book not found.');
         }
 
         return view('books/show', [
@@ -73,7 +53,7 @@ class Books extends BaseController
     {
         $book = $this->books->find($id);
         if (! $book) {
-            return redirect()->to('/books')->with('error', 'Book not found.');
+            return redirect()->to('/library?tab=collections')->with('error', 'Book not found.');
         }
 
         return view('books/form', ['book' => $book, 'categories' => $this->categories->orderBy('name')->findAll()]);
@@ -82,7 +62,7 @@ class Books extends BaseController
     public function update(int $id)
     {
         if (! $this->books->find($id)) {
-            return redirect()->to('/books')->with('error', 'Book not found.');
+            return redirect()->to('/library?tab=collections')->with('error', 'Book not found.');
         }
 
         return $this->persist($id);
@@ -93,15 +73,16 @@ class Books extends BaseController
     {
         $book = $this->books->find($id);
         if (! $book) {
-            return redirect()->to('/books')->with('error', 'Book not found.');
+            return redirect()->to('/library?tab=collections')->with('error', 'Book not found.');
         }
         if ((new BorrowingModel())->where('book_id', $id)->countAllResults() > 0) {
             return redirect()->back()->with('error', '"' . $book['title'] . '" has borrowing history, so it can\'t be deleted. Remove its copies in Inventory Management instead.');
         }
 
         $this->books->delete($id);
+        log_activity('book', 'deleted', 'Deleted "' . $book['title'] . '" (ISBN ' . $book['isbn'] . ') from the catalog', 'book', $id);
 
-        return redirect()->to('/books')->with('success', '"' . $book['title'] . '" was deleted.');
+        return redirect()->to('/library?tab=collections')->with('success', '"' . $book['title'] . '" was deleted.');
     }
 
     private function persist(?int $id)
@@ -157,10 +138,13 @@ class Books extends BaseController
                 ]);
             }
 
+            log_activity('book', 'added', 'Added "' . $data['title'] . '" (ISBN ' . $data['isbn'] . ') to the catalog with ' . $data['stock_count'] . ' cop' . ($data['stock_count'] === 1 ? 'y' : 'ies'), 'book', $newId);
+
             return redirect()->to('/books/' . $newId)->with('success', '"' . $data['title'] . '" was added to the collection.');
         }
 
         $this->books->update($id, $data);
+        log_activity('book', 'edited', 'Edited the details of "' . $data['title'] . '"', 'book', $id);
 
         return redirect()->to('/books/' . $id)->with('success', 'Book details updated.');
     }

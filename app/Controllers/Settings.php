@@ -41,7 +41,17 @@ class Settings extends BaseController
                 default => $raw,
             };
         }
+        $old     = (new SettingModel())->all();
+        $changes = [];
+        foreach ($values as $key => $value) {
+            if ((string) ($old[$key] ?? '') !== $value) {
+                $changes[] = SettingModel::DEFINITIONS[$key][0] . ': ' . $old[$key] . ' → ' . $value;
+            }
+        }
         (new SettingModel())->saveAll($values);
+        if ($changes) {
+            log_activity('settings', 'changed', 'Changed settings · ' . implode('; ', $changes));
+        }
 
         return redirect()->to('/settings')->with('success', 'Settings saved. New rules apply to loans and fines from now on.');
     }

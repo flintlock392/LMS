@@ -8,7 +8,7 @@
             <div class="col-lg-6">
                 <h1 class="hero-title">Welcome</h1>
                 <p class="hero-sub">the gateway to<br>knowledge</p>
-                <img class="hero-art" src="<?= brand_image('hero-books') ?>" alt="" width="520" height="400">
+                <img class="hero-art" src="<?= brand_image('hero-books') ?>" alt="" width="1397" height="1126">
             </div>
 
             <div class="col-lg-5 offset-lg-1">

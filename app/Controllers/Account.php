@@ -28,6 +28,8 @@ class Account extends BaseController
             'phone' => trim((string) $this->request->getPost('phone')) ?: null,
         ]);
 
+        log_activity('auth', 'profile_updated', session()->get('name') . ' updated their contact details', 'user', $id);
+
         return redirect()->to('/account')->with('success', 'Contact details saved.');
     }
 
@@ -49,6 +51,7 @@ class Account extends BaseController
         }
 
         $users->update($user['id'], ['password' => (string) $this->request->getPost('password')]);
+        log_activity('auth', 'password_changed', $user['name'] . ' changed their own password', 'user', (int) $user['id']);
 
         return redirect()->to('/account')->with('success', 'Password changed.');
     }

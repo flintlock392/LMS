@@ -39,7 +39,8 @@ class Staff extends BaseController
         $data             = $this->collect();
         $data['status']   = 'active';
         $data['password'] = (string) $this->request->getPost('password');
-        $this->users->insert($data);
+        $newId = (int) $this->users->insert($data, true);
+        log_activity('staff', 'added', 'Added ' . role_label($data['role']) . ' ' . $data['name'] . ' (' . $data['id_number'] . ')', 'user', $newId);
 
         return redirect()->to('/staff')->with('success', $data['name'] . ' was added as ' . role_label($data['role']) . '. They log in with Staff ID ' . $data['id_number'] . '.');
     }
@@ -75,7 +76,11 @@ class Staff extends BaseController
         if ($password !== '') {
             $data['password'] = $password;
         }
+        $before = $this->users->find($id);
         $this->users->update($id, $data);
+        log_activity('staff', 'edited', 'Edited staff account ' . $data['name'] . ' (' . $data['id_number'] . ')'
+            . ($before['role'] !== $data['role'] ? ' · user level changed to ' . role_label($data['role']) : '')
+            . ($password !== '' ? ' · password reset' : ''), 'user', $id);
 
         return redirect()->to('/staff')->with('success', 'Staff account updated' . ($password !== '' ? ' and password reset.' : '.'));
     }
@@ -95,6 +100,7 @@ class Staff extends BaseController
 
         $new = $user['status'] === 'active' ? 'suspended' : 'active';
         $this->users->update($id, ['status' => $new]);
+        log_activity('staff', $new, ($new === 'suspended' ? 'Suspended ' : 'Reactivated ') . 'staff account ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
 
         return redirect()->back()->with('success', $user['name'] . ' is now ' . $new . '.');
     }
@@ -114,6 +120,7 @@ class Staff extends BaseController
 
         // Their past circulation records stay; the "issued by" link is cleared by the foreign key.
         $this->users->delete($id);
+        log_activity('staff', 'deleted', 'Deleted staff account ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
 
         return redirect()->to('/staff')->with('success', $user['name'] . '\'s staff account was deleted.');
     }

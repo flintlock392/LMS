@@ -77,6 +77,12 @@ class BookModel extends Model
         if (! empty($f['author'])) {
             $this->where('books.author', $f['author']);
         }
+        if (! empty($f['added_from'])) {
+            $this->where('books.created_at >=', $f['added_from'] . ' 00:00:00');
+        }
+        if (! empty($f['added_to'])) {
+            $this->where('books.created_at <=', $f['added_to'] . ' 23:59:59');
+        }
 
         $available = self::availableSql();
         switch ($f['availability'] ?? '') {

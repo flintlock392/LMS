@@ -27,9 +27,11 @@ $roleIcon = ['head_librarian' => 'award', 'librarian' => 'person-badge', 'studen
         </a>
         <span class="role-chip"><i class="bi bi-<?= $roleIcon ?>"></i><?= esc(role_label($role)) ?></span>
         <nav>
-            <?php foreach (nav_items($role) as [$label, $icon, $target]): ?>
-                <?php $isActive = $path === $target || str_starts_with($path, $target . '/')
-                    || ($target === 'books' && str_starts_with($path, 'categories')); ?>
+            <?php foreach (nav_items($role) as $item): [$label, $icon, $target] = $item; ?>
+                <?php $isActive = false;
+                foreach (array_merge([$target], $item[3] ?? []) as $p) {
+                    $isActive = $isActive || $path === $p || str_starts_with($path, $p . '/');
+                } ?>
                 <a class="nav-item-link<?= $isActive ? ' active' : '' ?>" href="<?= site_url($target) ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
                     <i class="bi bi-<?= $icon ?>"></i><span><?= esc($label) ?></span>
                 </a>

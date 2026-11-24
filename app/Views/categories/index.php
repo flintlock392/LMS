@@ -2,7 +2,7 @@
 <?= $this->section('title') ?>Categories<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<a class="small d-inline-block mb-3" href="<?= site_url('books') ?>"><i class="bi bi-arrow-left"></i> Book Management</a>
+<a class="small d-inline-block mb-3" href="<?= site_url('library?tab=collections') ?>"><i class="bi bi-arrow-left"></i> Library</a>
 <div class="row g-4">
     <div class="col-lg-4">
         <div class="panel">
