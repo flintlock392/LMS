@@ -15,7 +15,7 @@ $active = static fn (array $paths) => in_array($path, $paths, true) ? ' active' 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="<?= asset('assets/css/app.css') ?>" rel="stylesheet">
 </head>
-<body class="public-body">
+<body class="public-body<?= in_array($path, ['', 'login'], true) ? ' is-home' : '' ?>">
 <header class="public-nav">
     <div class="container d-flex align-items-center flex-wrap gap-3">
         <a class="brand" href="<?= site_url('/') ?>" aria-label="<?= esc(setting('library_name')) ?> home">

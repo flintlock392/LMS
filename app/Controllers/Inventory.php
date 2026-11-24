@@ -39,6 +39,6 @@ class Inventory extends BaseController
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
 
-        return redirect()->to('/library?tab=books')->with('success', 'Inventory updated. The title now has ' . $new . ' cop' . ($new === 1 ? 'y' : 'ies') . '.');
+        return redirect()->to('/library?tab=collections')->with('success', 'Inventory updated. The title now has ' . $new . ' cop' . ($new === 1 ? 'y' : 'ies') . '.');
     }
 }

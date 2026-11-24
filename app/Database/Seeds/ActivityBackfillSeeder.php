@@ -8,7 +8,7 @@ use CodeIgniter\Database\Seeder;
 
 /**
  * Builds Activity Log entries from records that existed before the log did
- * (loans, returns, fines, inventory changes, accounts).
+ * (loans, returns, credits, inventory changes, accounts).
  * Safe to run more than once: it does nothing if the log already has entries.
  *
  * Run:  php spark db:seed ActivityBackfillSeeder
@@ -56,15 +56,11 @@ class ActivityBackfillSeeder extends Seeder
             }
         }
 
-        $fines = $db->table('fines f')->select('f.*, u.name, u.id_number')->join('users u', 'u.id = f.user_id')->get()->getResultArray();
-        foreach ($fines as $f) {
-            $amount = '₱' . number_format((float) $f['amount'], 2);
-            $add($f['created_at'], (int) $f['created_by'], 'fine', 'added', 'Charged ' . $f['name'] . ' (' . $f['id_number'] . ') a ' . $f['reason'] . ' fine of ' . $amount, 'fine', (int) $f['id']);
-            if ($f['status'] === 'paid') {
-                $add($f['paid_at'], (int) $f['processed_by'], 'fine', 'paid', 'Recorded payment of ' . $amount . ' from ' . $f['name'] . ' (' . $f['id_number'] . ')', 'fine', (int) $f['id']);
-            } elseif ($f['status'] === 'waived') {
-                $add($f['updated_at'], (int) $f['processed_by'], 'fine', 'waived', 'Waived ' . $amount . ' fine for ' . $f['name'], 'fine', (int) $f['id']);
-            }
+        $credits = $db->table('credit_logs c')->select('c.*, u.name, u.id_number')->join('users u', 'u.id = c.user_id')->get()->getResultArray();
+        foreach ($credits as $c) {
+            $add($c['created_at'], (int) $c['created_by'], 'credit', $c['change'] > 0 ? 'added' : 'reduced',
+                ($c['change'] > 0 ? 'Added ' . $c['change'] : 'Reduced ' . abs((int) $c['change'])) . ' credit(s) for ' . $c['name'] . ' (' . $c['id_number'] . ') · now ' . $c['balance_after'],
+                'user', (int) $c['user_id']);
         }
 
         usort($rows, static fn ($a, $b) => strcmp($a['created_at'], $b['created_at']));

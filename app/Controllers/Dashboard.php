@@ -3,9 +3,10 @@
 namespace App\Controllers;
 
 use App\Libraries\Circulation;
+use App\Libraries\CreditPolicy;
 use App\Models\BookModel;
 use App\Models\BorrowingModel;
-use App\Models\FineModel;
+use App\Models\CreditAppealModel;
 use App\Models\UserModel;
 
 class Dashboard extends BaseController
@@ -22,11 +23,19 @@ class Dashboard extends BaseController
         $borrowings = new BorrowingModel();
         $users      = new UserModel();
 
+        // Students at risk: with credits, highest first.
+        $atRisk = (new UserModel())->select('id, name, id_number, credits')
+            ->where('role', UserModel::STUDENT)->where('credits >', 0)
+            ->orderBy('credits', 'DESC')->orderBy('name')->findAll(6);
+
         return view('dashboard/staff', [
             'bookStats'  => $books->stats(),
             'loans'      => $borrowings->counts(),
-            'fineTotals' => (new FineModel())->totals(),
             'requests'   => (new \App\Models\BookRequestModel())->pendingCount(),
+            'appeals'    => (new CreditAppealModel())->pendingCount(),
+            'blocked'    => (new UserModel())->where('role', UserModel::STUDENT)->where('credits >=', CreditPolicy::MAX)->countAllResults(),
+            'restricted' => (new UserModel())->where('role', UserModel::STUDENT)->where('credits >=', CreditPolicy::TIERS[1][0])->countAllResults(),
+            'atRisk'     => $atRisk,
             'students'   => $users->where('role', UserModel::STUDENT)->where('status', 'active')->countAllResults(),
             'staffCount' => $users->whereIn('role', UserModel::STAFF_ROLES)->countAllResults(),
             'overdue'    => (new BorrowingModel())->filtered(['status' => 'overdue'])->findAll(6),
@@ -41,25 +50,24 @@ class Dashboard extends BaseController
 
     private function student()
     {
-        $userId     = (int) session()->get('userId');
-        $circ       = new Circulation();
-        $loans      = (new BorrowingModel())->filtered(['status' => 'active', 'user_id' => $userId])->findAll();
-        $estimated  = 0.0;
+        $userId    = (int) session()->get('userId');
+        $circ      = new Circulation();
+        $loans     = (new BorrowingModel())->filtered(['status' => 'active', 'user_id' => $userId])->findAll();
+        $estimated = 0;
         foreach ($loans as &$loan) {
-            [$days, $fine]     = $circ->overdueFine($loan['due_date'], date('Y-m-d'));
-            $loan['days_late'] = $days;
-            $loan['est_fine']  = $fine;
-            $estimated += $fine;
+            [$days, $credits]     = $circ->overdueCredits($loan['due_date'], date('Y-m-d'));
+            $loan['days_late']    = $days;
+            $loan['est_credits']  = $credits;
+            $estimated           += $credits;
         }
         unset($loan);
 
-
         return view('dashboard/student', [
-            'loans'        => $loans,
-            'unpaid'       => (new FineModel())->unpaidTotalForUser($userId),
-            'estimated'    => $estimated,
-            'history'      => (new BorrowingModel())->where('user_id', $userId)->where('status !=', 'borrowed')->countAllResults(),
-            'newBooks'     => (new BookModel())->withAvailability()->orderBy('books.created_at', 'DESC')->findAll(4),
+            'loans'     => $loans,
+            'credits'   => (int) ((new UserModel())->find($userId)['credits'] ?? 0),
+            'estimated' => $estimated,
+            'history'   => (new BorrowingModel())->where('user_id', $userId)->where('status !=', 'borrowed')->countAllResults(),
+            'newBooks'  => (new BookModel())->withAvailability()->orderBy('books.created_at', 'DESC')->findAll(4),
         ]);
     }
 }

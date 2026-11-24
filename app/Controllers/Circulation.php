@@ -33,11 +33,11 @@ class Circulation extends BaseController
     public function receive(int $id)
     {
         $condition = (string) $this->request->getPost('condition');
-        $fee       = $this->request->getPost('damage_fee');
-        $fee       = ($fee === null || $fee === '') ? null : max(0, (float) $fee);
+        $extra     = $this->request->getPost('damage_credits');
+        $extra     = ($extra === null || $extra === '') ? null : max(0, min(20, (int) $extra));
 
         try {
-            $message = (new CirculationService())->checkin($id, (int) session()->get('userId'), $condition, $fee, trim((string) $this->request->getPost('notes')));
+            $message = (new CirculationService())->checkin($id, (int) session()->get('userId'), $condition, $extra, trim((string) $this->request->getPost('notes')));
         } catch (RuntimeException $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }

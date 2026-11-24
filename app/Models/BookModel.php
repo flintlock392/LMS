@@ -94,6 +94,9 @@ class BookModel extends Model
         $sort = in_array($f['sort'] ?? '', self::SORTABLE, true) ? $f['sort'] : 'title';
         $dir  = strtolower($f['dir'] ?? '') === 'desc' ? 'DESC' : 'ASC';
         $this->orderBy($sort === 'available' ? 'available' : 'books.' . $sort, $dir, false);
+        if ($sort !== 'title') {
+            $this->orderBy('books.title', 'ASC');   // tie-breaker: A–Z
+        }
 
         return $this;
     }

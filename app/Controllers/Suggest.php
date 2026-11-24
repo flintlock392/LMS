@@ -14,7 +14,6 @@ use App\Models\UserModel;
  *   books    Library Collections/Books tabs → titles, authors, ISBNs
  *   students User Management → Students   → name, student no., email, course
  *   staff    User Management → Staff (Head Librarian only) → name, Staff ID, email
- *   fines    Fine Management → students with fines + book titles on fines
  *
  * Each suggestion: {type, label, sub, value}. Choosing one puts "value"
  * in the search box and applies the filter.
@@ -40,13 +39,7 @@ class Suggest extends BaseController
             'books'    => $this->books($q, 'all'),
             'students' => $this->students($q, 'all'),
             'staff'    => $this->staff($q),
-            // Fine Management: typing something that looks like a student number
-            // (starts with a digit, e.g. "2024-0") suggests student numbers first;
-            // otherwise students by name plus book titles.
-            'fines'    => preg_match('/^\d/', $q)
-                ? $this->students($q, 'fines', 'student_no')
-                : array_merge($this->students($q, 'fines', 'name'), $this->books($q, 'fines')),
-            // Active students only (used by pickers such as "Add a fine").
+            // Active students only (used by student pickers).
             'borrowers' => $this->students($q, 'active'),
             default    => [],
         };
@@ -64,13 +57,13 @@ class Suggest extends BaseController
     }
 
     /**
-     * $only:  all | loans (has borrowed) | fines (has a fine) | active (not suspended)
+     * $only:  all | loans (has borrowed) | active (not suspended)
      * $match: any (name, number, email, course) | student_no | name
      */
     private function students(string $q, string $only, string $match = 'any'): array
     {
         $b = db_connect()->table('users')
-            ->select('users.id, users.name, users.id_number, users.course, users.status')
+            ->select('users.id, users.name, users.id_number, users.course, users.status, users.credits')
             ->where('users.role', UserModel::STUDENT);
 
         if ($match === 'student_no') {
@@ -85,9 +78,6 @@ class Suggest extends BaseController
             $b->where('users.status', 'active');
         } elseif ($only === 'loans') {
             $b->where('EXISTS (SELECT 1 FROM borrowings x WHERE x.user_id = users.id)', null, false);
-        } elseif ($only === 'fines') {
-            $b->select("(SELECT COALESCE(SUM(f.amount),0) FROM fines f WHERE f.user_id = users.id AND f.status = 'unpaid') AS unpaid", false)
-              ->where('EXISTS (SELECT 1 FROM fines x WHERE x.user_id = users.id)', null, false);
         }
 
         $rows = $b->orderBy($this->startsWith(['users.name', 'users.id_number'], $q), 'DESC', false)
@@ -99,14 +89,14 @@ class Suggest extends BaseController
             // Searching by number shows the number first; otherwise the name.
             'label' => $match === 'student_no' ? $u['id_number'] : $u['name'],
             'sub'   => ($match === 'student_no' ? $u['name'] : $u['id_number']) . ($u['course'] ? ' · ' . $u['course'] : '')
-                . (isset($u['unpaid']) && (float) $u['unpaid'] > 0 ? ' · owes ' . money($u['unpaid']) : '')
+                . ((int) $u['credits'] > 0 ? ' · ' . (int) $u['credits'] . ' credits' : '')
                 . ($u['status'] !== 'active' ? ' · suspended' : ''),
             'value' => $u['id_number'],   // a student number matches exactly one student
             'pick'  => $u['name'] . ' (' . $u['id_number'] . ')',
         ], $rows);
     }
 
-    /** $only: all | loans (has been borrowed) | fines (has a fine) */
+    /** $only: all | loans (has been borrowed) */
     private function books(string $q, string $only): array
     {
         $b = db_connect()->table('books')
@@ -115,8 +105,6 @@ class Suggest extends BaseController
 
         if ($only === 'loans') {
             $b->where('EXISTS (SELECT 1 FROM borrowings x WHERE x.book_id = books.id)', null, false);
-        } elseif ($only === 'fines') {
-            $b->where('EXISTS (SELECT 1 FROM fines f JOIN borrowings x ON x.id = f.borrowing_id WHERE x.book_id = books.id)', null, false);
         }
 
         $rows = $b->orderBy($this->startsWith(['books.title', 'books.author'], $q), 'DESC', false)
@@ -126,7 +114,7 @@ class Suggest extends BaseController
             'type'  => 'book',
             'label' => $r['title'],
             'sub'   => $r['author'] . ' · ISBN ' . $r['isbn'],
-            // Loan lists match ISBNs exactly; the catalog and fines search by title.
+            // Loan lists match ISBNs exactly; the catalog searches by title.
             'value' => $only === 'loans' ? $r['isbn'] : $r['title'],
         ], $rows);
     }

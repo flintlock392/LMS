@@ -5,7 +5,6 @@ namespace App\Database\Seeds;
 use App\Models\BookModel;
 use App\Models\BorrowingModel;
 use App\Models\CategoryModel;
-use App\Models\FineModel;
 use App\Models\InventoryLogModel;
 use App\Models\UserModel;
 use CodeIgniter\Database\Seeder;
@@ -108,7 +107,7 @@ class LibrarySeeder extends Seeder
         // ---- Sample circulation ---------------------------------------------
         $staff = $userIds['LS-0001'];
         $loans = new BorrowingModel();
-        $fines = new FineModel();
+        $creditBalance = [];   // student id => credits, from late returns below
         $day   = static fn (int $offset, string $fmt = 'Y-m-d H:i:s') => date($fmt, strtotime(($offset >= 0 ? '+' : '') . $offset . ' days'));
 
         // Active, on time.
@@ -134,13 +133,18 @@ class LibrarySeeder extends Seeder
                 'status' => 'returned', 'condition' => 'good',
             ], true);
             if ($late > 0) {
-                $fines->insert([
-                    'user_id' => $userIds[$student], 'borrowing_id' => $id, 'reason' => 'overdue',
-                    'amount' => $late * 5, 'status' => $late === 3 ? 'unpaid' : 'paid', 'notes' => $late . ' day(s) late',
-                    'created_by' => $staff, 'processed_by' => $late === 3 ? null : $staff,
-                    'paid_at' => $late === 3 ? null : $day($start + 8 + $late),
+                // Late returns add credits (1 per day late).
+                $uid                 = $userIds[$student];
+                $creditBalance[$uid] = ($creditBalance[$uid] ?? 0) + $late;
+                $this->db->table('credit_logs')->insert([
+                    'user_id' => $uid, 'change' => $late, 'balance_after' => $creditBalance[$uid], 'reason' => 'overdue',
+                    'borrowing_id' => $id, 'notes' => $late . ' day(s) late', 'created_by' => $staff,
+                    'created_at' => $day($start + 7 + $late),
                 ]);
             }
+        }
+        foreach ($creditBalance as $uid => $credits) {
+            $this->db->table('users')->where('id', $uid)->update(['credits' => $credits]);
         }
 
         // Turn the sample history above into Activity Log entries.

@@ -5,7 +5,9 @@ namespace App\Controllers;
 use App\Libraries\Circulation as CirculationService;
 use App\Models\BookRequestModel;
 use App\Models\BorrowingModel;
-use App\Models\FineModel;
+use App\Models\CreditAppealModel;
+use App\Models\CreditLogModel;
+use App\Models\UserModel;
 use RuntimeException;
 
 /** Student self-service pages. */
@@ -22,7 +24,7 @@ class My extends BaseController
         $model = new BorrowingModel();
         $rows  = $model->filtered(['status' => 'all', 'user_id' => $this->me()])->paginate(15);
         foreach ($rows as &$l) {
-            [$l['days_late'], $l['est_fine']] = $l['status'] === 'borrowed' ? $circ->overdueFine($l['due_date'], date('Y-m-d')) : [0, 0];
+            [$l['days_late'], $l['est_credits']] = $l['status'] === 'borrowed' ? $circ->overdueCredits($l['due_date'], date('Y-m-d')) : [0, 0];
         }
         unset($l);
 
@@ -70,11 +72,56 @@ class My extends BaseController
         return redirect()->back()->with('success', 'Request cancelled.');
     }
 
-    public function fines()
+    /** My Credits: balance, standing, how to reduce credits, appeals and history. */
+    public function credits()
     {
-        return view('my/fines', [
-            'rows'   => (new FineModel())->filtered(['status' => 'all', 'user_id' => $this->me()])->findAll(),
-            'unpaid' => (new FineModel())->unpaidTotalForUser($this->me()),
+        $user = (new UserModel())->find($this->me());
+
+        return view('my/credits', [
+            'credits'  => (int) $user['credits'],
+            'loans'    => (new BorrowingModel())->activeCountForUser($this->me()),
+            'maxLoans' => (int) setting('max_loans'),
+            'loanDays' => (int) setting('loan_days'),
+            'history'  => (new CreditLogModel())->filtered(['user_id' => $this->me()])->findAll(30),
+            'appeals'  => (new CreditAppealModel())->detailed()->where('credit_appeals.user_id', $this->me())
+                ->where('credit_appeals.status !=', 'cancelled')->orderBy('credit_appeals.created_at', 'DESC')->findAll(10),
         ]);
+    }
+
+    /** Appeal to the Head Librarian to reduce credits (or report library service done). */
+    public function appeal()
+    {
+        $rules = [
+            'type'    => 'required|in_list[appeal,library_service]',
+            'message' => ['label' => 'Message', 'rules' => 'required|min_length[10]|max_length[2000]', 'errors' => ['min_length' => 'Please explain a little more (at least 10 characters).']],
+            'hours'   => 'permit_empty|decimal|greater_than[0]|less_than_equal_to[100]',
+        ];
+        if (! $this->validate($rules)) {
+            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+        try {
+            (new CirculationService())->submitAppeal(
+                $this->me(),
+                (string) $this->request->getPost('type'),
+                (string) $this->request->getPost('message'),
+                $this->request->getPost('hours') !== '' ? (float) $this->request->getPost('hours') : null
+            );
+        } catch (RuntimeException $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()->to('/my/credits')->with('success', 'Sent! The Head Librarian will review it. You\'ll see the answer here.');
+    }
+
+    public function cancelAppeal(int $id)
+    {
+        try {
+            (new CirculationService())->cancelAppeal($id, $this->me());
+        } catch (RuntimeException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Appeal cancelled.');
     }
 }

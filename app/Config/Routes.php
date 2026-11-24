@@ -41,7 +41,9 @@ $routes->group('', ['filter' => 'role:student'], static function ($routes) {
     $routes->post('catalog/(:num)/request', 'Catalog::request/$1');
     $routes->post('my/loans/(:num)/return-request', 'My::requestReturn/$1');
     $routes->post('my/requests/(:num)/cancel', 'My::cancelRequest/$1');
-    $routes->get('my/fines', 'My::fines');
+    $routes->get('my/credits', 'My::credits');
+    $routes->post('my/credits/appeal', 'My::appeal');
+    $routes->post('my/credits/appeals/(:num)/cancel', 'My::cancelAppeal/$1');
 });
 
 // ---- Head librarian only (declared before the (:num) routes below) ---------
@@ -60,9 +62,10 @@ $routes->group('', ['filter' => $head], static function ($routes) {
 
     $routes->post('inventory/adjust', 'Inventory::adjust');
 
-    $routes->post('fines/create', 'Fines::create');
-    $routes->post('fines/(:num)/waive', 'Fines::waive/$1');
-    $routes->post('fines/(:num)/delete', 'Fines::delete/$1');
+    // Credit Management: add / reduce credits, handle appeals (Head Librarian only)
+    $routes->post('credits/adjust', 'Credits::adjust');
+    $routes->post('credits/appeals/(:num)/approve', 'Credits::approveAppeal/$1');
+    $routes->post('credits/appeals/(:num)/decline', 'Credits::declineAppeal/$1');
 
     $routes->get('staff', 'Staff::index');
     $routes->get('staff/new', 'Staff::new');
@@ -108,8 +111,8 @@ $routes->group('', ['filter' => $staff], static function ($routes) {
 
     $routes->get('inventory', 'Library::legacy/inventory');
 
-    $routes->get('fines', 'Fines::index');
-    $routes->post('fines/(:num)/pay', 'Fines::pay/$1');
+    // Credit Management (view: head + staff)
+    $routes->get('credits', 'Credits::index');
 
     $routes->get('reports', 'Reports::index');
     $routes->get('reports/export/(:segment)', 'Reports::export/$1');

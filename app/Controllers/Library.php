@@ -8,7 +8,6 @@ use App\Models\BookModel;
 use App\Models\BookRequestModel;
 use App\Models\BorrowingModel;
 use App\Models\CategoryModel;
-use App\Models\InventoryLogModel;
 use App\Models\UserModel;
 
 /**
@@ -23,7 +22,7 @@ use App\Models\UserModel;
  */
 class Library extends BaseController
 {
-    public const TABS = ['all', 'requested', 'collections', 'borrowed', 'overdue', 'returned', 'lost', 'books'];
+    public const TABS = ['all', 'requested', 'collections', 'borrowed', 'overdue', 'returned', 'lost'];
 
     /** What the date range filters on, per tab (shown to the user). */
     public const DATE_MEANING = [
@@ -34,7 +33,6 @@ class Library extends BaseController
         'returned'    => 'borrowed',
         'lost'        => 'borrowed',
         'collections' => 'added to the catalog',
-        'books'       => 'stock changes made',
     ];
 
     public function index()
@@ -42,6 +40,7 @@ class Library extends BaseController
         $service = new CirculationService();
 
         $tab = (string) $this->request->getGet('tab');
+        $tab = $tab === 'books' ? 'collections' : $tab;   // the old "Books" tab now lives in Collections
         $tab = in_array($tab, self::TABS, true) ? $tab : 'all';
 
         [$from, $to, $rangeError] = $this->dateRange();
@@ -75,56 +74,32 @@ class Library extends BaseController
                 'q' => $q, 'from' => $from, 'to' => $to, 'course' => $data['course'], 'category_id' => $data['category'],
             ])->paginate(15);
             foreach ($rows as &$r) {
-                [$r['days_late'], $r['est_fine']] = $r['type'] === 'return' && $r['due_date']
-                    ? $service->overdueFine($r['due_date'], date('Y-m-d')) : [0, 0];
+                [$r['days_late'], $r['est_credits']] = $r['type'] === 'return' && $r['due_date']
+                    ? $service->overdueCredits($r['due_date'], date('Y-m-d')) : [0, 0];
             }
             unset($r);
             $data['rows']  = $rows;
             $data['pager'] = $model->pager;
-        } elseif ($tab === 'collections' || $tab === 'books') {
+        } elseif ($tab === 'collections') {
+            // Unavailable titles first, then the ones with the fewest copies left (A–Z within each).
             $model = new BookModel();
             $data['rows'] = $model->filtered([
                 'q'           => $q,
                 'category_id' => $data['category'],
                 'course'      => $data['course'],
-                'added_from'  => $tab === 'collections' ? $from : '',
-                'added_to'    => $tab === 'collections' ? $to : '',
-                'sort'        => $tab === 'books' ? 'available' : (string) $this->request->getGet('sort'),
-                'dir'         => $tab === 'books' ? 'asc' : (string) $this->request->getGet('dir'),
+                'added_from'  => $from,
+                'added_to'    => $to,
+                'sort'        => 'available',
+                'dir'         => 'asc',
             ])->paginate(15);
             $data['pager'] = $model->pager;
-
-            if ($tab === 'books') {
-                $log = (new InventoryLogModel())
-                    ->select('inventory_logs.*, books.title, users.name AS user_name')
-                    ->join('books', 'books.id = inventory_logs.book_id')
-                    ->join('users', 'users.id = inventory_logs.user_id', 'left')
-                    ->orderBy('inventory_logs.id', 'DESC');
-                if ($from !== '') {
-                    $log->where('inventory_logs.created_at >=', $from . ' 00:00:00');
-                }
-                if ($to !== '') {
-                    $log->where('inventory_logs.created_at <=', $to . ' 23:59:59');
-                }
-                if ($q !== '') {
-                    $log->like('books.title', $q);
-                }
-                // Same Category / Course choice as the stock table above.
-                if ($data['category'] !== '') {
-                    $data['category'] === 'none' ? $log->where('books.category_id', null) : $log->where('books.category_id', (int) $data['category']);
-                }
-                apply_course_filter($log, 'books.course', $data['course']);
-                // Own page numbers ("history_page") so it pages separately from the stock table above.
-                $data['log']      = $log->paginate(10, 'history');
-                $data['logPager'] = $log->pager;
-                $data['stats']    = (new BookModel())->stats();
-            }
+            $data['stats'] = (new BookModel())->stats();
         } else {
             $status = ['all' => 'all', 'borrowed' => 'active', 'overdue' => 'overdue', 'returned' => 'returned', 'lost' => 'lost'][$tab];
             $model  = new BorrowingModel();
             $rows   = $model->filtered(['status' => $status, 'q' => $q, 'from' => $from, 'to' => $to, 'course' => $data['course'], 'category_id' => $data['category']])->paginate(15);
             foreach ($rows as &$r) {
-                [$r['days_late'], $r['est_fine']] = $r['status'] === 'borrowed' ? $service->overdueFine($r['due_date'], date('Y-m-d')) : [0, 0];
+                [$r['days_late'], $r['est_credits']] = $r['status'] === 'borrowed' ? $service->overdueCredits($r['due_date'], date('Y-m-d')) : [0, 0];
             }
             unset($r);
             $data['rows']  = $rows;
@@ -171,7 +146,7 @@ class Library extends BaseController
         $query = $this->request->getGet();
         $tab   = match ($page) {
             'books'     => 'collections',
-            'inventory' => 'books',
+            'inventory' => 'collections',
             default     => ['active' => 'borrowed', 'overdue' => 'overdue', 'returned' => 'returned', 'lost' => 'lost', 'all' => 'all'][$query['status'] ?? 'active'] ?? 'borrowed',
         };
         unset($query['status']);
@@ -191,7 +166,6 @@ class Library extends BaseController
             'overdue'     => $loans['overdue'],
             'returned'    => (new BorrowingModel())->where('status', 'returned')->countAllResults(),
             'lost'        => (new BorrowingModel())->where('status', 'lost')->countAllResults(),
-            'books'       => $stats['copies'],
             'requested'   => (new BookRequestModel())->pendingCount(),
         ];
     }
@@ -225,12 +199,11 @@ class Library extends BaseController
         $what = [
             'all'         => 'all borrowing records',
             'requested'   => 'requests waiting for approval',
-            'collections' => 'titles in the collection',
+            'collections' => 'titles in the collection, unavailable and fewest copies first',
             'borrowed'    => 'books currently borrowed',
             'overdue'     => 'overdue books',
             'returned'    => 'returned books',
             'lost'        => 'books reported lost',
-            'books'       => 'stock levels for every title',
         ][$tab];
 
         $verb = self::DATE_MEANING[$tab];
@@ -242,9 +215,6 @@ class Library extends BaseController
             $to !== ''   => ' ' . $verb . ' on or before ' . fmt_date($to),
             default      => '',
         };
-        if ($tab === 'books' && $when !== '') {
-            $when = '; the stock history below lists' . $when;
-        }
 
         return 'Showing ' . $what . $when . ($q !== '' ? ', matching "' . $q . '"' : '') . ' · ' . $total . ' result' . ($total === 1 ? '' : 's');
     }

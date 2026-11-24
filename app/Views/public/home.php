@@ -4,14 +4,14 @@
 <?= $this->section('content') ?>
 <section class="hero">
     <div class="container">
-        <div class="row align-items-start g-4">
+        <div class="row align-items-center g-4">
             <div class="col-lg-6">
                 <h1 class="hero-title">Welcome</h1>
                 <p class="hero-sub">the gateway to<br>knowledge</p>
                 <img class="hero-art" src="<?= brand_image('hero-books') ?>" alt="" width="1397" height="1126">
             </div>
 
-            <div class="col-lg-5 offset-lg-1 mt-lg-5">
+            <div class="col-lg-5 offset-lg-1 align-self-center">
                 <?php if (session()->get('isLoggedIn')): ?>
                     <div class="login-card text-center">
                         <div class="login-card-inner">

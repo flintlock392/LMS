@@ -21,7 +21,7 @@
         <div class="empty"><i class="bi bi-people"></i>No students found.</div>
     <?php else: ?>
         <div class="table-responsive"><table class="table table-nook">
-            <thead><tr><th>Student</th><th>Student no.</th><th>Course</th><th>On loan</th><th>Unpaid</th><th>Status</th><th class="text-end"></th></tr></thead>
+            <thead><tr><th>Student</th><th>Student no.</th><th>Course</th><th>On loan</th><th>Credits</th><th>Status</th><th class="text-end"></th></tr></thead>
             <tbody>
             <?php foreach ($rows as $u): ?>
                 <tr>
@@ -29,7 +29,7 @@
                     <td><?= esc($u['id_number']) ?></td>
                     <td><?= esc($u['course'] ?? '—') ?><div class="sub"><?= esc($u['year_level'] ?? '') ?></div></td>
                     <td><?= (int) $u['loans'] ?></td>
-                    <td><?= (float) $u['unpaid'] > 0 ? '<span class="text-danger fw-semibold">' . money($u['unpaid']) . '</span>' : '—' ?></td>
+                    <td><?= credit_badge($u['credits']) ?></td>
                     <td><?= status_badge($u['status']) ?></td>
                     <td class="actions">
                         <a class="btn btn-sm btn-outline-nook" href="<?= site_url('members/' . $u['id']) ?>" title="View"><i class="bi bi-eye"></i></a>

@@ -32,7 +32,7 @@ class UserModel extends Model
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $allowedFields = [
-        'id_number', 'name', 'email', 'phone', 'password', 'role', 'status',
+        'id_number', 'name', 'email', 'phone', 'password', 'role', 'status', 'credits',
         'course', 'year_level', 'position', 'last_login_at',
     ];
     protected $useTimestamps = true;

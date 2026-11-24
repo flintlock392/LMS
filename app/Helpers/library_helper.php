@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Library helper: ISBN utilities, money, badges, roles and the role-based menu.
+ * Library helper: ISBN utilities, credit badges, roles and the role-based menu.
  * Autoloaded for every controller via BaseController.
  */
 
@@ -18,6 +18,18 @@ if (! function_exists('asset')) {
         $file = FCPATH . ltrim($path, '/');
 
         return base_url($path) . (is_file($file) ? '?v=' . filemtime($file) : '');
+    }
+}
+
+if (! function_exists('credit_badge')) {
+    /** Pill like "7 credits · Warning", coloured by standing level. */
+    function credit_badge(int|string|null $credits, bool $withLabel = true): string
+    {
+        $credits = (int) $credits;
+        $tier    = \App\Libraries\CreditPolicy::tier($credits);
+
+        return '<span class="pill pill-' . $tier['tone'] . '" title="' . esc($tier['explain']) . '">'
+            . $credits . ' credit' . ($credits === 1 ? '' : 's') . ($withLabel ? ' · ' . esc($tier['label']) : '') . '</span>';
     }
 }
 
@@ -165,13 +177,6 @@ if (! function_exists('setting')) {
     }
 }
 
-if (! function_exists('money')) {
-    function money(float|string|null $amount): string
-    {
-        return setting('currency') . number_format((float) $amount, 2);
-    }
-}
-
 if (! function_exists('current_role')) {
     function current_role(): ?string
     {
@@ -212,7 +217,7 @@ if (! function_exists('fmt_date')) {
 }
 
 if (! function_exists('status_badge')) {
-    /** Coloured pill for loan, fine and account statuses. */
+    /** Coloured pill for loan, appeal and account statuses. */
     function status_badge(string $status, ?string $dueDate = null): string
     {
         if ($status === 'borrowed' && $dueDate !== null && $dueDate < date('Y-m-d')) {
@@ -224,9 +229,9 @@ if (! function_exists('status_badge')) {
             'overdue'   => ['danger', 'Overdue'],
             'returned'  => ['success', 'Returned'],
             'lost'      => ['dark', 'Lost'],
-            'unpaid'    => ['danger', 'Unpaid'],
-            'paid'      => ['success', 'Paid'],
-            'waived'    => ['secondary', 'Waived'],
+            'pending'   => ['warning', 'Waiting for review'],
+            'approved'  => ['success', 'Approved'],
+            'declined'  => ['danger', 'Declined'],
             'active'    => ['success', 'Active'],
             'suspended' => ['danger', 'Suspended'],
         ];
@@ -301,7 +306,7 @@ if (! function_exists('nav_items')) {
                 ['Dashboard', 'speedometer2', 'dashboard'],
                 ['Library', 'book', 'library', $collection],
                 ['User Management', 'people', 'members', ['members', 'staff']],
-                ['Fine Management', 'cash-coin', 'fines'],
+                ['Credit Management', 'shield-exclamation', 'credits'],
                 ['Reports & Analytics', 'bar-chart-line', 'reports'],
                 ['System Settings', 'gear', 'settings'],
             ],
@@ -309,14 +314,14 @@ if (! function_exists('nav_items')) {
                 ['Dashboard', 'speedometer2', 'dashboard'],
                 ['Library', 'book', 'library', $collection],
                 ['User Registration', 'person-plus', 'members'],
-                ['Fine Processing', 'cash-coin', 'fines'],
+                ['Credit Records', 'shield-exclamation', 'credits'],
                 ['Reports', 'file-earmark-bar-graph', 'reports'],
             ],
             UserModel::STUDENT => [
                 ['Dashboard', 'speedometer2', 'dashboard'],
                 ['Browse Books', 'search', 'catalog'],
                 ['My Loans', 'journal-bookmark', 'my/loans'],
-                ['My Fines', 'cash-coin', 'my/fines'],
+                ['My Credits', 'shield-check', 'my/credits'],
             ],
             default => [],
         };
@@ -324,7 +329,7 @@ if (! function_exists('nav_items')) {
 }
 
 if (! function_exists('module_title')) {
-    /** The role-specific name of a module (e.g. "fines" => "Fine Processing" for staff). */
+    /** The role-specific name of a module (e.g. "credits" => "Credit Records" for staff). */
     function module_title(string $path): string
     {
         foreach (nav_items(current_role()) as $item) {

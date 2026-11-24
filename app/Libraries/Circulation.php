@@ -5,7 +5,7 @@ namespace App\Libraries;
 use App\Models\BookModel;
 use App\Models\BookRequestModel;
 use App\Models\BorrowingModel;
-use App\Models\FineModel;
+use App\Models\CreditLogModel;
 use App\Models\InventoryLogModel;
 use App\Models\SettingModel;
 use App\Models\UserModel;
@@ -20,7 +20,6 @@ class Circulation
 {
     private BookModel $books;
     private BorrowingModel $borrowings;
-    private FineModel $fines;
     private UserModel $users;
     private SettingModel $settings;
 
@@ -28,7 +27,6 @@ class Circulation
     {
         $this->books        = new BookModel();
         $this->borrowings   = new BorrowingModel();
-        $this->fines        = new FineModel();
         $this->users        = new UserModel();
         $this->settings     = new SettingModel();
     }
@@ -42,17 +40,20 @@ class Circulation
     {
         [$book, $user] = $this->assertCanBorrow($bookId, $userId);
 
+        // Students on "Final warning" get a shorter loan period (see CreditPolicy).
+        $due = date('Y-m-d', strtotime('+' . $this->loanDaysFor($user) . ' days'));
+
         $id = (int) $this->borrowings->insert([
             'book_id'     => $bookId,
             'user_id'     => $userId,
             'issued_by'   => $staffId,
             'borrowed_at' => date('Y-m-d H:i:s'),
-            'due_date'    => date('Y-m-d', strtotime('+' . (int) $this->settings->value('loan_days') . ' days')),
+            'due_date'    => $due,
             'status'      => 'borrowed',
         ], true);
 
         log_activity('circulation', 'issued', 'Issued "' . $book['title'] . '" to ' . $user['name'] . ' (' . $user['id_number'] . '), due '
-            . fmt_date(date('Y-m-d', strtotime('+' . (int) $this->settings->value('loan_days') . ' days'))), 'borrowing', $id, $staffId);
+            . fmt_date($due), 'borrowing', $id, $staffId);
 
         // A waiting "Request to borrow" for this book is now fulfilled.
         $this->closePendingRequests(['user_id' => $userId, 'book_id' => $bookId, 'type' => 'borrow'], $staffId, $id);
@@ -75,23 +76,25 @@ class Circulation
         $user = $this->borrowerOrFail($userId);
         $who  = $forRequest ? 'You' : $user['name'];
 
-        $maxLoans = (int) $this->settings->value('max_loans');
+        // Credits decide how many books the student may have (see CreditPolicy).
+        $credits = (int) ($user['credits'] ?? 0);
+        $tier    = CreditPolicy::tier($credits);
+        if (CreditPolicy::isBlocked($credits)) {
+            throw new RuntimeException($who . ($forRequest ? ' are' : ' is') . ' blocked from borrowing (' . $credits . ' credits). '
+                . ($forRequest ? 'Please appeal to the Head Librarian from My Credits.' : 'The Head Librarian must settle the student\'s status first.'));
+        }
+        $maxLoans = CreditPolicy::maxBooks($credits, (int) $this->settings->value('max_loans'));
         $count    = $this->borrowings->activeCountForUser($userId);
         if ($forRequest) {
             $count += (new BookRequestModel())->where('user_id', $userId)->where('type', 'borrow')->where('status', 'pending')->countAllResults();
         }
         if ($count >= $maxLoans) {
             throw new RuntimeException($who . ($forRequest ? ' already have' : ' already has') . ' the maximum of ' . $maxLoans . ' book(s)'
-                . ($forRequest ? ' on loan or requested.' : ' on loan.'));
+                . ($forRequest ? ' on loan or requested' : ' on loan')
+                . ($tier['key'] !== 'good' ? ' allowed at "' . $tier['label'] . '" (' . $credits . ' credits).' : '.'));
         }
         if ($this->borrowings->overdueCountForUser($userId) > 0) {
             throw new RuntimeException($who . ($forRequest ? ' have' : ' has') . ' overdue books. They must be returned first.');
-        }
-        if ($this->settings->value('block_unpaid_fines') === '1') {
-            $unpaid = $this->fines->unpaidTotalForUser($userId);
-            if ($unpaid > 0) {
-                throw new RuntimeException($who . ($forRequest ? ' have' : ' has') . ' unpaid fines of ' . money($unpaid) . '. Settle them before borrowing.');
-            }
         }
         if ($this->borrowings->userHasBook($userId, $bookId)) {
             throw new RuntimeException($who . ($forRequest ? ' already have' : ' already has') . ' a copy of "' . $book['title'] . '".');
@@ -167,11 +170,11 @@ class Circulation
     }
 
     /** Staff receive a book for a return request (condition / damage / lost as at the desk). */
-    public function approveReturnRequest(int $requestId, int $staffId, string $condition = 'good', ?float $damageFee = null, string $notes = ''): string
+    public function approveReturnRequest(int $requestId, int $staffId, string $condition = 'good', ?int $damageCredits = null, string $notes = ''): string
     {
         $r = $this->pendingRequestOrFail($requestId, 'return');
 
-        return $this->checkin((int) $r['borrowing_id'], $staffId, $condition, $damageFee, $notes);   // closes the request too
+        return $this->checkin((int) $r['borrowing_id'], $staffId, $condition, $damageCredits, $notes);   // closes the request too
     }
 
     /** Staff decline a request, optionally saying why (the student sees the reason). */
@@ -219,9 +222,9 @@ class Circulation
 
     /**
      * Receive a book back. $condition is good, damaged or lost.
-     * Returns a summary message including any fines charged.
+     * Returns a summary message including any credits added.
      */
-    public function checkin(int $borrowingId, int $staffId, string $condition = 'good', ?float $damageFee = null, string $notes = ''): string
+    public function checkin(int $borrowingId, int $staffId, string $condition = 'good', ?int $damageCredits = null, string $notes = ''): string
     {
         $loan = $this->borrowings->find($borrowingId);
         if (! $loan || $loan['status'] !== 'borrowed') {
@@ -246,23 +249,24 @@ class Circulation
             'notes'       => $notes !== '' ? mb_substr($notes, 0, 255) : null,
         ]);
 
+        // Violations add credits instead of fines.
         if ($condition === 'lost') {
-            $fee = (float) $this->settings->value('lost_book_fee');
-            $this->addFine((int) $loan['user_id'], $borrowingId, 'lost', $fee, $staffId, 'Lost: ' . $book['title']);
-            $charged[] = 'lost book ' . money($fee);
+            $add = (int) $this->settings->value('lost_credits');
+            $this->changeCredits((int) $loan['user_id'], $add, 'lost', $staffId, 'Lost: ' . $book['title'], $borrowingId);
+            $charged[] = '+' . $add . ' for a lost book';
 
             $this->adjustStock((int) $book['id'], -1, 'lost', $staffId, 'Reported lost by borrower', true);
         } else {
-            [$days, $fine] = $this->overdueFine($loan['due_date'], date('Y-m-d'));
-            if ($fine > 0) {
-                $this->addFine((int) $loan['user_id'], $borrowingId, 'overdue', $fine, $staffId, $days . ' day(s) late');
-                $charged[] = 'overdue ' . money($fine) . ' (' . $days . ' day' . ($days === 1 ? '' : 's') . ')';
+            [$days, $late] = $this->overdueCredits($loan['due_date'], date('Y-m-d'));
+            if ($late > 0) {
+                $this->changeCredits((int) $loan['user_id'], $late, 'overdue', $staffId, $days . ' day(s) late: ' . $book['title'], $borrowingId);
+                $charged[] = '+' . $late . ' for ' . $days . ' day' . ($days === 1 ? '' : 's') . ' late';
             }
             if ($condition === 'damaged') {
-                $fee = $damageFee ?? (float) $this->settings->value('damaged_book_fee');
-                if ($fee > 0) {
-                    $this->addFine((int) $loan['user_id'], $borrowingId, 'damaged', $fee, $staffId, $notes ?: 'Returned damaged');
-                    $charged[] = 'damage ' . money($fee);
+                $add = $damageCredits ?? (int) $this->settings->value('damaged_credits');
+                if ($add > 0) {
+                    $this->changeCredits((int) $loan['user_id'], $add, 'damaged', $staffId, $notes ?: 'Returned damaged: ' . $book['title'], $borrowingId);
+                    $charged[] = '+' . $add . ' for damage';
                 }
             }
         }
@@ -274,7 +278,9 @@ class Circulation
 
         $message = '"' . $book['title'] . '" ' . ($condition === 'lost' ? 'marked as lost.' : 'returned.');
         if ($charged) {
-            $message .= ' Fines charged: ' . implode(', ', $charged) . '.';
+            $now = (int) ($this->users->find($loan['user_id'])['credits'] ?? 0);
+            $message .= ' Credits added: ' . implode(', ', $charged) . '. The student now has ' . $now . ' credit' . ($now === 1 ? '' : 's')
+                . ' (' . CreditPolicy::tier($now)['label'] . ').';
         }
 
         $borrower = $this->users->find($loan['user_id']);
@@ -282,7 +288,7 @@ class Circulation
             'circulation',
             $condition === 'lost' ? 'lost' : 'returned',
             ($condition === 'lost' ? 'Marked "' . $book['title'] . '" as lost by ' : 'Received "' . $book['title'] . '" from ')
-                . $borrower['name'] . ($condition === 'damaged' ? ' (damaged)' : '') . ($charged ? ' · fines: ' . implode(', ', $charged) : ''),
+                . $borrower['name'] . ($condition === 'damaged' ? ' (damaged)' : '') . ($charged ? ' · credits: ' . implode(', ', $charged) : ''),
             'borrowing',
             $borrowingId,
             $staffId
@@ -291,38 +297,156 @@ class Circulation
         return $message;
     }
 
-    /** [days late, fine amount] for a due date and a return date (Y-m-d). */
-    public function overdueFine(string $dueDate, string $returnDate): array
+    /** [days late, credits] for a due date and a return date (Y-m-d). */
+    public function overdueCredits(string $dueDate, string $returnDate): array
     {
         $days = (int) floor((strtotime($returnDate) - strtotime($dueDate)) / 86400);
         if ($days <= 0) {
-            return [0, 0.0];
+            return [0, 0];
         }
 
-        $fine = $days * (float) $this->settings->value('fine_per_day');
-        $cap  = (float) $this->settings->value('max_overdue_fine');
+        $credits = $days * (int) $this->settings->value('credits_per_late_day');
+        $cap     = (int) $this->settings->value('max_late_credits');
         if ($cap > 0) {
-            $fine = min($fine, $cap);
+            $credits = min($credits, $cap);
         }
 
-        return [$days, round($fine, 2)];
+        return [$days, $credits];
+    }
+
+    /** Loan period for this student, shortened on "Final warning". */
+    public function loanDaysFor(array $user): int
+    {
+        return CreditPolicy::loanDays((int) ($user['credits'] ?? 0), (int) $this->settings->value('loan_days'));
     }
 
     // ------------------------------------------------------------------
-    // Fines and inventory
+    // Credits
     // ------------------------------------------------------------------
 
-    public function addFine(int $userId, ?int $borrowingId, string $reason, float $amount, ?int $staffId, string $notes = ''): int
+    /**
+     * Add (positive) or reduce (negative) a student's credits, kept between 0 and 20,
+     * and record it in the credit history and Activity Log. Returns the new balance.
+     */
+    public function changeCredits(int $userId, int $change, string $reason, ?int $staffId, string $notes = '', ?int $borrowingId = null, ?int $appealId = null): int
     {
-        return (int) $this->fines->insert([
-            'user_id'      => $userId,
-            'borrowing_id' => $borrowingId,
-            'reason'       => array_key_exists($reason, FineModel::REASONS) ? $reason : 'other',
-            'amount'       => round($amount, 2),
-            'status'       => 'unpaid',
-            'notes'        => $notes !== '' ? mb_substr($notes, 0, 255) : null,
-            'created_by'   => $staffId,
+        $user = $this->users->find($userId);
+        if (! $user || $user['role'] !== UserModel::STUDENT) {
+            throw new RuntimeException('Student not found.');
+        }
+        if ($change === 0) {
+            throw new RuntimeException('Enter a number of credits other than zero.');
+        }
+        if (! array_key_exists($reason, CreditLogModel::LABELS)) {
+            $reason = $change > 0 ? 'other' : 'correction';
+        }
+
+        $before = (int) $user['credits'];
+        $after  = max(0, min(CreditPolicy::MAX, $before + $change));
+        $actual = $after - $before;
+        if ($actual === 0) {
+            throw new RuntimeException($change > 0
+                ? $user['name'] . ' already has the maximum of ' . CreditPolicy::MAX . ' credits.'
+                : $user['name'] . ' has no credits to reduce.');
+        }
+
+        $this->users->update($userId, ['credits' => $after]);
+        (new CreditLogModel())->insert([
+            'user_id'       => $userId,
+            'change'        => $actual,
+            'balance_after' => $after,
+            'reason'        => $reason,
+            'borrowing_id'  => $borrowingId,
+            'appeal_id'     => $appealId,
+            'notes'         => $notes !== '' ? mb_substr($notes, 0, 255) : null,
+            'created_by'    => $staffId,
+        ]);
+
+        $tierBefore = CreditPolicy::tier($before);
+        $tierAfter  = CreditPolicy::tier($after);
+        log_activity('credit', $actual > 0 ? 'added' : 'reduced',
+            ($actual > 0 ? 'Added ' . $actual : 'Reduced ' . abs($actual)) . ' credit' . (abs($actual) === 1 ? '' : 's')
+            . ($actual > 0 ? ' to ' : ' for ') . $user['name'] . ' (' . $user['id_number'] . ') · ' . CreditLogModel::LABELS[$reason]
+            . ' · now ' . $after . ($tierBefore['key'] !== $tierAfter['key'] ? ' (' . $tierBefore['label'] . ' → ' . $tierAfter['label'] . ')' : '')
+            . ($notes !== '' ? ' · ' . $notes : ''),
+            'user', $userId, $staffId);
+
+        return $after;
+    }
+
+    /** Student asks the Head Librarian to reduce their credits. Returns the appeal id. */
+    public function submitAppeal(int $userId, string $type, string $message, ?float $hours = null): int
+    {
+        $user = $this->users->find($userId);
+        if (! $user || $user['role'] !== UserModel::STUDENT) {
+            throw new RuntimeException('Student not found.');
+        }
+        if ((int) $user['credits'] === 0) {
+            throw new RuntimeException('You have no credits to reduce.');
+        }
+        $appeals = new \App\Models\CreditAppealModel();
+        if ($appeals->where('user_id', $userId)->where('status', 'pending')->countAllResults() > 0) {
+            throw new RuntimeException('You already have an appeal waiting. The Head Librarian will review it soon.');
+        }
+
+        $id = (int) $appeals->insert([
+            'user_id' => $userId,
+            'type'    => array_key_exists($type, \App\Models\CreditAppealModel::TYPES) ? $type : 'appeal',
+            'message' => mb_substr(trim($message), 0, 2000),
+            'hours'   => $type === 'library_service' && $hours ? $hours : null,
+            'status'  => 'pending',
         ], true);
+        log_activity('credit', 'appeal_submitted', $user['name'] . ' (' . $user['id_number'] . ') submitted '
+            . ($type === 'library_service' ? 'a library service report' . ($hours ? ' (' . $hours . ' h)' : '') : 'an appeal') . ' to reduce credits', 'user', $userId, $userId);
+
+        return $id;
+    }
+
+    /** Head Librarian approves an appeal, reducing the student's credits by $reduceBy. */
+    public function approveAppeal(int $appealId, int $staffId, int $reduceBy, string $response = ''): int
+    {
+        $appeals = new \App\Models\CreditAppealModel();
+        $a       = $appeals->find($appealId);
+        if (! $a || $a['status'] !== 'pending') {
+            throw new RuntimeException('That appeal is no longer waiting.');
+        }
+        if ($reduceBy < 1) {
+            throw new RuntimeException('Enter how many credits to remove (at least 1).');
+        }
+
+        $reason = $a['type'] === 'library_service' ? 'library_service' : 'appeal';
+        $after  = $this->changeCredits((int) $a['user_id'], -$reduceBy, $reason, $staffId, $response, null, $appealId);
+        $appeals->update($appealId, [
+            'status' => 'approved', 'reduced_by' => $reduceBy, 'handled_by' => $staffId, 'handled_at' => date('Y-m-d H:i:s'),
+            'response' => $response !== '' ? mb_substr($response, 0, 255) : null,
+        ]);
+
+        return $after;
+    }
+
+    public function declineAppeal(int $appealId, int $staffId, string $response = ''): void
+    {
+        $appeals = new \App\Models\CreditAppealModel();
+        $a       = $appeals->find($appealId);
+        if (! $a || $a['status'] !== 'pending') {
+            throw new RuntimeException('That appeal is no longer waiting.');
+        }
+        $appeals->update($appealId, [
+            'status' => 'declined', 'handled_by' => $staffId, 'handled_at' => date('Y-m-d H:i:s'),
+            'response' => $response !== '' ? mb_substr($response, 0, 255) : null,
+        ]);
+        $user = $this->users->find($a['user_id']);
+        log_activity('credit', 'appeal_declined', 'Declined ' . $user['name'] . '\'s credit appeal' . ($response !== '' ? ' · ' . $response : ''), 'user', (int) $a['user_id'], $staffId);
+    }
+
+    public function cancelAppeal(int $appealId, int $userId): void
+    {
+        $appeals = new \App\Models\CreditAppealModel();
+        $a       = $appeals->find($appealId);
+        if (! $a || (int) $a['user_id'] !== $userId || $a['status'] !== 'pending') {
+            throw new RuntimeException('That appeal is no longer waiting.');
+        }
+        $appeals->update($appealId, ['status' => 'cancelled', 'handled_at' => date('Y-m-d H:i:s')]);
     }
 
     /**

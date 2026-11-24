@@ -37,7 +37,7 @@
 <div class="panel">
     <h2 class="panel-title"><i class="bi bi-journal-bookmark"></i> Loans
         <a class="ms-auto btn btn-sm btn-nook" href="<?= site_url('catalog') ?>"><i class="bi bi-search me-1"></i>Browse books</a></h2>
-    <p class="small text-muted">Books are lent for <?= (int) setting('loan_days') ?> days. Late returns cost <?= money(setting('fine_per_day')) ?> per day. Use <strong>Request return</strong>, then bring the book to the library desk.</p>
+    <p class="small text-muted">Books are lent for <?= (int) setting('loan_days') ?> days. Late returns add <?= (int) setting('credits_per_late_day') ?> credit per day (see <a href="<?= site_url('my/credits') ?>">My Credits</a>). Use <strong>Request return</strong>, then bring the book to the library desk.</p>
     <?php if (! $rows): ?>
         <div class="empty"><i class="bi bi-book"></i>You haven't borrowed any books yet. <a href="<?= site_url('catalog') ?>">Browse the collection</a></div>
     <?php else: ?>
@@ -50,7 +50,7 @@
                     <td><?= fmt_date($l['due_date']) ?></td>
                     <td><?= fmt_date($l['returned_at']) ?></td>
                     <td><?= status_badge($l['status'], $l['due_date']) ?>
-                        <?php if ($l['days_late'] > 0): ?><div class="sub text-danger"><?= $l['days_late'] ?> day(s) late · ~<?= money($l['est_fine']) ?> so far</div><?php endif; ?></td>
+                        <?php if ($l['days_late'] > 0): ?><div class="sub text-danger"><?= $l['days_late'] ?> day(s) late · ~+<?= $l['est_credits'] ?> credits so far</div><?php endif; ?></td>
                     <td class="actions">
                         <?php if ($l['status'] === 'borrowed' && isset($pendingReturns[(int) $l['id']])): ?>
                             <span class="pill pill-warning">Return requested</span>

@@ -15,28 +15,29 @@ class Requests extends BaseController
     public function approve(int $id)
     {
         try {
-            (new CirculationService())->approveBorrowRequest($id, (int) session()->get('userId'));
+            $loanId = (new CirculationService())->approveBorrowRequest($id, (int) session()->get('userId'));
         } catch (RuntimeException $e) {
             $tip = str_contains($e->getMessage(), 'no longer waiting') ? '' : ' You can decline the request instead.';
 
             return redirect()->back()->with('error', $e->getMessage() . $tip);
         }
 
-        return redirect()->back()->with('success', 'Request approved. The book is issued and due back '
-            . fmt_date(date('Y-m-d', strtotime('+' . (int) setting('loan_days') . ' days'))) . '.');
+        $due = (new \App\Models\BorrowingModel())->find($loanId)['due_date'];
+
+        return redirect()->back()->with('success', 'Request approved. The book is issued and due back ' . fmt_date($due) . '.');
     }
 
     /** Return request: receive the book, with its condition (good / damaged / lost). */
     public function receive(int $id)
     {
-        $fee = $this->request->getPost('damage_fee');
+        $extra = $this->request->getPost('damage_credits');
 
         try {
             $message = (new CirculationService())->approveReturnRequest(
                 $id,
                 (int) session()->get('userId'),
                 (string) $this->request->getPost('condition'),
-                ($fee === null || $fee === '') ? null : max(0, (float) $fee),
+                ($extra === null || $extra === '') ? null : max(0, min(20, (int) $extra)),
                 trim((string) $this->request->getPost('notes'))
             );
         } catch (RuntimeException $e) {

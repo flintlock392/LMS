@@ -3,7 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\BorrowingModel;
-use App\Models\FineModel;
+use App\Models\CreditLogModel;
 use App\Models\UserModel;
 
 /**
@@ -28,7 +28,6 @@ class Members extends BaseController
         $rows = $this->users->search([UserModel::STUDENT], $q, $status)
             ->select('users.*')
             ->select("(SELECT COUNT(*) FROM borrowings b WHERE b.user_id = users.id AND b.status = 'borrowed') AS loans", false)
-            ->select("(SELECT COALESCE(SUM(amount),0) FROM fines f WHERE f.user_id = users.id AND f.status = 'unpaid') AS unpaid", false)
             ->paginate(15);
 
         return view('members/index', ['rows' => $rows, 'pager' => $this->users->pager, 'q' => $q, 'status' => $status]);
@@ -44,8 +43,7 @@ class Members extends BaseController
         return view('members/show', [
             'user'         => $user,
             'loans'        => (new BorrowingModel())->filtered(['status' => 'all', 'user_id' => $id])->findAll(20),
-            'fines'        => (new FineModel())->filtered(['status' => 'all', 'user_id' => $id])->findAll(20),
-            'unpaid'       => (new FineModel())->unpaidTotalForUser($id),
+            'creditLog'    => (new CreditLogModel())->filtered(['user_id' => $id])->findAll(20),
         ]);
     }
 
@@ -122,9 +120,9 @@ class Members extends BaseController
             return redirect()->to('/members')->with('error', 'Student not found.');
         }
         $hasHistory = (new BorrowingModel())->where('user_id', $id)->countAllResults() > 0
-            || (new FineModel())->where('user_id', $id)->countAllResults() > 0;
+            || (new CreditLogModel())->where('user_id', $id)->countAllResults() > 0;
         if ($hasHistory) {
-            return redirect()->back()->with('error', $user['name'] . ' has borrowing or fine records, so the account can\'t be deleted. Suspend it instead.');
+            return redirect()->back()->with('error', $user['name'] . ' has borrowing or credit records, so the account can\'t be deleted. Suspend it instead.');
         }
 
         $this->users->delete($id);

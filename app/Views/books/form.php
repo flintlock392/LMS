@@ -55,7 +55,7 @@
                 </div>
             <?php else: ?>
                 <div class="col-12"><div class="alert alert-light border small mb-0"><i class="bi bi-info-circle me-1"></i>
-                    This title has <strong><?= (int) $book['stock_count'] ?></strong> copies. <?= is_head() ? 'Change the count in <a href="' . site_url('library?tab=books') . '">Library → Books → Update Stock</a>' : 'Only the Head Librarian can change the number of copies' ?> so every change is logged.</div></div>
+                    This title has <strong><?= (int) $book['stock_count'] ?></strong> copies. <?= is_head() ? 'Change the count with <a href="' . site_url('library?tab=collections') . '">Library → Update Stock</a>' : 'Only the Head Librarian can change the number of copies' ?> so every change is logged.</div></div>
             <?php endif; ?>
             <div class="col-12">
                 <label class="form-label" for="description">Description</label>

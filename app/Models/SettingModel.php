@@ -14,12 +14,11 @@ class SettingModel extends Model
         'library_name'       => ['Library name', 'The Cozy Nook', 'text', 'Shown in the header and on reports.'],
         'loan_days'          => ['Loan period (days)', '7', 'int', 'How long a student may keep a book.'],
         'max_loans'          => ['Max books per student', '3', 'int', 'Books a student may have out at once.'],
-        'fine_per_day'       => ['Overdue fine per day', '5.00', 'money', 'Charged for each day a book is late.'],
-        'max_overdue_fine'   => ['Max overdue fine per book', '200.00', 'money', 'Cap on a single overdue fine. 0 = no cap.'],
-        'lost_book_fee'      => ['Lost book fee', '500.00', 'money', 'Charged when a borrowed book is reported lost.'],
-        'damaged_book_fee'   => ['Damaged book fee', '150.00', 'money', 'Default charge when a book comes back damaged.'],
-        'block_unpaid_fines' => ['Block borrowing with unpaid fines', '1', 'bool', 'Students with unpaid fines cannot borrow.'],
-        'currency'           => ['Currency symbol', '₱', 'text', 'Used when showing fines.'],
+        // Credits added for violations (a student is blocked at 20 credits).
+        'credits_per_late_day' => ['Credits per day late', '1', 'credits', 'Added for each day a book is returned late.'],
+        'max_late_credits'     => ['Max credits per late return', '5', 'credits', 'Cap on credits from a single late return.'],
+        'damaged_credits'      => ['Credits for a damaged book', '3', 'credits', 'Added when a book comes back damaged.'],
+        'lost_credits'         => ['Credits for a lost book', '5', 'credits', 'Added when a borrowed book is reported lost.'],
     ];
 
     protected $table         = 'settings';

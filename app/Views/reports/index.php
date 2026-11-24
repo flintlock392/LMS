@@ -20,7 +20,7 @@
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="<?= site_url('reports/export/loans' . $qs) ?>">Loans in this period</a></li>
                     <li><a class="dropdown-item" href="<?= site_url('reports/export/overdue') ?>">Overdue books (now)</a></li>
-                    <li><a class="dropdown-item" href="<?= site_url('reports/export/fines' . $qs) ?>">Fines in this period</a></li>
+                    <li><a class="dropdown-item" href="<?= site_url('reports/export/credits' . $qs) ?>">Credit changes in this period</a></li>
                     <li><a class="dropdown-item" href="<?= site_url('reports/export/inventory') ?>">Inventory (now)</a></li>
                     <?php if (is_head()): ?><li><a class="dropdown-item" href="<?= site_url('reports/export/students') ?>">Student list</a></li><?php endif; ?>
                 </ul>
@@ -38,8 +38,8 @@
         ['Returned late', $summary['late_returns'], 'alarm', 'warn'],
         ['Reported lost', $summary['lost'], 'question-octagon', 'bad'],
         ['Students who borrowed', $summary['borrowers'], 'people', ''],
-        ['Fines charged', money($summary['fines_charged']), 'receipt', 'warn'],
-        ['Fines collected', money($summary['fines_paid']), 'cash-stack', 'good'],
+        ['Credits added', $summary['credits_added'], 'shield-exclamation', 'warn'],
+        ['Credits reduced', $summary['credits_reduced'], 'shield-check', 'good'],
     ] as [$label, $value, $icon, $tone]): ?>
         <div class="col-6 col-lg-3"><div class="stat"><span class="icon <?= $tone ?>"><i class="bi bi-<?= $icon ?>"></i></span>
             <span><span class="value d-block"><?= $value ?></span><span class="label"><?= $label ?></span></span></div></div>
@@ -47,7 +47,7 @@
 </div>
 
 <?php if (is_head()): ?>
-    <?php $maxLoans = max(1, max(array_column($months, 'loans'))); $maxFines = max(1, max(array_column($months, 'fines'))); ?>
+    <?php $maxLoans = max(1, max(array_column($months, 'loans'))); $maxCredits = max(1, max(array_column($months, 'credits'))); ?>
     <div class="row g-4 mb-4">
         <div class="col-lg-6">
             <div class="panel h-100">
@@ -65,12 +65,12 @@
         </div>
         <div class="col-lg-6">
             <div class="panel h-100">
-                <h3 class="panel-title">Fines collected per month</h3>
-                <div class="vbars" role="img" aria-label="Fines collected per month, last six months">
+                <h3 class="panel-title">Credits added per month</h3>
+                <div class="vbars" role="img" aria-label="Credits added per month, last six months">
                     <?php foreach ($months as $m): ?>
-                        <div class="col" title="<?= $m['label'] ?>: <?= money($m['fines']) ?> collected">
-                            <span class="v"><?= $m['fines'] > 0 ? number_format($m['fines']) : '0' ?></span>
-                            <span class="bar" style="height: <?= round($m['fines'] / $maxFines * 100) ?>%"></span>
+                        <div class="col" title="<?= $m['label'] ?>: <?= $m['credits'] ?> credits added">
+                            <span class="v"><?= $m['credits'] ?></span>
+                            <span class="bar" style="height: <?= round($m['credits'] / $maxCredits * 100) ?>%"></span>
                             <span class="m"><?= $m['label'] ?></span>
                         </div>
                     <?php endforeach; ?>

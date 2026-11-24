@@ -18,7 +18,7 @@
                 <dt class="col-5">Year</dt><dd class="col-7"><?= esc($user['year_level'] ?? '—') ?></dd>
                 <dt class="col-5">Registered</dt><dd class="col-7"><?= fmt_date($user['created_at']) ?></dd>
                 <dt class="col-5">Last login</dt><dd class="col-7"><?= fmt_date($user['last_login_at'], true) ?></dd>
-                <dt class="col-5">Unpaid fines</dt><dd class="col-7 <?= $unpaid > 0 ? 'text-danger fw-semibold' : '' ?>"><?= money($unpaid) ?></dd>
+                <dt class="col-5">Credits</dt><dd class="col-7"><?= credit_badge($user['credits']) ?></dd>
             </dl>
             <?php if (is_head()): ?>
                 <hr>
@@ -51,17 +51,20 @@
             <?php endif; ?>
         </div>
         <div class="panel">
-            <h3 class="panel-title"><i class="bi bi-cash-coin"></i> Fines
-                <a class="ms-auto small" href="<?= site_url('fines?status=all&q=' . urlencode($user['id_number'])) ?>">Open in <?= esc(module_title('fines')) ?></a></h3>
-            <?php if (! $fines): ?>
-                <div class="empty"><i class="bi bi-emoji-smile"></i>No fines.</div>
+            <?php $t = \App\Libraries\CreditPolicy::tier((int) $user['credits']); ?>
+            <h3 class="panel-title"><i class="bi bi-shield-exclamation"></i> Credits
+                <a class="ms-auto small" href="<?= site_url('credits?tab=history&q=' . urlencode($user['id_number'])) ?>">Open in <?= esc(module_title('credits')) ?></a></h3>
+            <p class="small mb-3"><?= credit_badge($user['credits']) ?> <span class="text-muted ms-1"><?= esc($t['explain']) ?></span></p>
+            <?php if (! $creditLog): ?>
+                <div class="empty"><i class="bi bi-emoji-smile"></i>No credits so far.</div>
             <?php else: ?>
                 <div class="table-responsive"><table class="table table-nook">
-                    <thead><tr><th>Date</th><th>Reason</th><th>Amount</th><th>Status</th></tr></thead>
-                    <tbody><?php foreach ($fines as $f): ?>
-                        <tr><td><?= fmt_date($f['created_at']) ?></td>
-                            <td><?= esc(\App\Models\FineModel::REASONS[$f['reason']] ?? $f['reason']) ?><div class="sub"><?= esc($f['title'] ?? $f['notes'] ?? '') ?></div></td>
-                            <td><?= money($f['amount']) ?></td><td><?= status_badge($f['status']) ?></td></tr>
+                    <thead><tr><th>Date</th><th>Change</th><th>Reason</th><th>Balance</th></tr></thead>
+                    <tbody><?php foreach ($creditLog as $l): $up = $l['change'] > 0; ?>
+                        <tr><td><?= fmt_date($l['created_at']) ?></td>
+                            <td><span class="pill <?= $up ? 'pill-danger' : 'pill-success' ?>"><?= $up ? '+' : '−' ?><?= abs((int) $l['change']) ?></span></td>
+                            <td><?= esc(\App\Models\CreditLogModel::LABELS[$l['reason']] ?? $l['reason']) ?><div class="sub"><?= esc($l['notes'] ?: ($l['title'] ?? '')) ?></div></td>
+                            <td><?= (int) $l['balance_after'] ?></td></tr>
                     <?php endforeach; ?></tbody>
                 </table></div>
             <?php endif; ?>

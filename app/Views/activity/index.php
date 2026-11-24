@@ -51,7 +51,7 @@ $quick = [
     <p id="activity-help" class="form-text mt-0 mb-2">
         <i class="bi bi-info-circle"></i>
         Choose a <strong>start date</strong> and an <strong>end date</strong>. The log lists every action recorded in the system from
-        <strong>12:00 AM on the start date</strong> to <strong>11:59 PM on the end date</strong>: books issued and returned, fines, inventory changes, catalog edits, student and staff accounts, settings and sign-ins.
+        <strong>12:00 AM on the start date</strong> to <strong>11:59 PM on the end date</strong>: books issued and returned, credits, inventory changes, catalog edits, student and staff accounts, settings and sign-ins.
         Pick the same date in both boxes to see a single day.
     </p>
     <div class="d-flex flex-wrap gap-1 mb-3">

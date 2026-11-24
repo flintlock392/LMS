@@ -27,8 +27,8 @@ class Reports extends BaseController
             'late_returns'  => (int) $one("SELECT COUNT(*) v FROM borrowings WHERE status = 'returned' AND returned_at BETWEEN ? AND ? AND DATE(returned_at) > due_date", [$start, $end]),
             'lost'          => (int) $one("SELECT COUNT(*) v FROM borrowings WHERE status = 'lost' AND returned_at BETWEEN ? AND ?", [$start, $end]),
             'new_students'  => (int) $one("SELECT COUNT(*) v FROM users WHERE role = 'student' AND created_at BETWEEN ? AND ?", [$start, $end]),
-            'fines_charged' => $one('SELECT COALESCE(SUM(amount),0) v FROM fines WHERE created_at BETWEEN ? AND ?', [$start, $end]),
-            'fines_paid'    => $one("SELECT COALESCE(SUM(amount),0) v FROM fines WHERE status = 'paid' AND paid_at BETWEEN ? AND ?", [$start, $end]),
+            'credits_added'   => (int) $one('SELECT COALESCE(SUM(`change`),0) v FROM credit_logs WHERE `change` > 0 AND created_at BETWEEN ? AND ?', [$start, $end]),
+            'credits_reduced' => (int) -$one('SELECT COALESCE(SUM(`change`),0) v FROM credit_logs WHERE `change` < 0 AND created_at BETWEEN ? AND ?', [$start, $end]),
             'borrowers'     => (int) $one('SELECT COUNT(DISTINCT user_id) v FROM borrowings WHERE borrowed_at BETWEEN ? AND ?', [$start, $end]),
         ];
 
@@ -63,7 +63,7 @@ class Reports extends BaseController
         $months = [];
         for ($i = 5; $i >= 0; $i--) {
             $key          = date('Y-m', strtotime("first day of -{$i} months"));
-            $months[$key] = ['label' => date('M', strtotime($key . '-01')), 'loans' => 0, 'fines' => 0.0];
+            $months[$key] = ['label' => date('M', strtotime($key . '-01')), 'loans' => 0, 'credits' => 0];
         }
         $since = array_key_first($months) . '-01 00:00:00';
         foreach ($db->query("SELECT DATE_FORMAT(borrowed_at, '%Y-%m') m, COUNT(*) n FROM borrowings WHERE borrowed_at >= ? GROUP BY m", [$since])->getResultArray() as $r) {
@@ -71,9 +71,9 @@ class Reports extends BaseController
                 $months[$r['m']]['loans'] = (int) $r['n'];
             }
         }
-        foreach ($db->query("SELECT DATE_FORMAT(paid_at, '%Y-%m') m, SUM(amount) n FROM fines WHERE status = 'paid' AND paid_at >= ? GROUP BY m", [$since])->getResultArray() as $r) {
+        foreach ($db->query("SELECT DATE_FORMAT(created_at, '%Y-%m') m, SUM(`change`) n FROM credit_logs WHERE `change` > 0 AND created_at >= ? GROUP BY m", [$since])->getResultArray() as $r) {
             if (isset($months[$r['m']])) {
-                $months[$r['m']]['fines'] = (float) $r['n'];
+                $months[$r['m']]['credits'] = (int) $r['n'];
             }
         }
 
@@ -105,7 +105,7 @@ class Reports extends BaseController
         ];
     }
 
-    /** CSV downloads: loans, overdue, fines, inventory, students (head). */
+    /** CSV downloads: loans, overdue, credits, inventory, students (head). */
     public function export(string $type)
     {
         [$from, $to] = $this->range();
@@ -129,11 +129,12 @@ class Reports extends BaseController
                      WHERE b.status = 'borrowed' AND b.due_date < CURDATE() ORDER BY b.due_date"
                 )->getResultArray();
                 break;
-            case 'fines':
-                $header = ['Date', 'Student no.', 'Student', 'Reason', 'Amount', 'Status', 'Paid at', 'Notes'];
+            case 'credits':
+                $header = ['Date', 'Student no.', 'Student', 'Change', 'Balance after', 'Reason', 'Notes', 'By'];
                 $rows   = $db->query(
-                    'SELECT f.created_at, u.id_number, u.name, f.reason, f.amount, f.status, f.paid_at, f.notes
-                     FROM fines f JOIN users u ON u.id = f.user_id WHERE f.created_at BETWEEN ? AND ? ORDER BY f.created_at', $range
+                    'SELECT c.created_at, u.id_number, u.name, c.`change`, c.balance_after, c.reason, c.notes, s.name AS staff
+                     FROM credit_logs c JOIN users u ON u.id = c.user_id LEFT JOIN users s ON s.id = c.created_by
+                     WHERE c.created_at BETWEEN ? AND ? ORDER BY c.created_at', $range
                 )->getResultArray();
                 break;
             case 'inventory':

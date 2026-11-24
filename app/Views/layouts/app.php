@@ -17,39 +17,42 @@ $roleIcon = ['head_librarian' => 'award', 'librarian' => 'person-badge', 'studen
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="<?= asset('assets/css/app.css') ?>" rel="stylesheet">
+    <script>
+        // Apply the remembered sidebar state before the page paints (no flicker).
+        try { if (localStorage.getItem('sidebarCollapsed') === '1') { document.documentElement.classList.add('sidebar-collapsed'); } } catch (e) {}
+    </script>
 </head>
 <body class="app-body"<?= is_staff() ? ' data-suggest-url="' . site_url('suggest') . '"' : '' ?>>
 <div class="app-shell">
     <aside class="sidebar" id="sidebar" aria-label="Main menu">
-        <a class="brand" href="<?= site_url('dashboard') ?>">
+        <a class="brand" href="<?= site_url('dashboard') ?>" title="<?= esc(setting('library_name')) ?>">
             <img src="<?= brand_image('logo') ?>" alt="">
             <span><strong><?= esc(setting('library_name')) ?></strong><small>Library System</small></span>
         </a>
-        <span class="role-chip"><i class="bi bi-<?= $roleIcon ?>"></i><?= esc(role_label($role)) ?></span>
+        <span class="role-chip" title="<?= esc(role_label($role)) ?>"><i class="bi bi-<?= $roleIcon ?>"></i><span><?= esc(role_label($role)) ?></span></span>
         <nav>
             <?php foreach (nav_items($role) as $item): [$label, $icon, $target] = $item; ?>
                 <?php $isActive = false;
                 foreach (array_merge([$target], $item[3] ?? []) as $p) {
                     $isActive = $isActive || $path === $p || str_starts_with($path, $p . '/');
                 } ?>
-                <a class="nav-item-link<?= $isActive ? ' active' : '' ?>" href="<?= site_url($target) ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
+                <a class="nav-item-link<?= $isActive ? ' active' : '' ?>" href="<?= site_url($target) ?>" title="<?= esc($label) ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
                     <i class="bi bi-<?= $icon ?>"></i><span><?= esc($label) ?></span>
                 </a>
             <?php endforeach; ?>
         </nav>
         <div class="sidebar-footer d-flex flex-column gap-2">
-            <a href="<?= site_url('account') ?>"><i class="bi bi-person-circle me-2"></i>My Account</a>
+            <a href="<?= site_url('account') ?>" title="My Account"><i class="bi bi-person-circle"></i><span>My Account</span></a>
             <form method="post" action="<?= site_url('logout') ?>" class="m-0" data-confirm="Do you want to log out of <?= esc(setting('library_name')) ?>?">
                 <?= csrf_field() ?>
-                <button type="submit"><i class="bi bi-box-arrow-right me-2"></i>Log out</button>
+                <button type="submit" title="Log out"><i class="bi bi-box-arrow-right"></i><span>Log out</span></button>
             </form>
         </div>
     </aside>
 
     <div class="app-main">
         <header class="topbar">
-            <button class="btn btn-sm btn-outline-nook sidebar-toggle" type="button" aria-controls="sidebar" aria-label="Open menu"
-                    onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="bi bi-list"></i></button>
+            <button class="sidebar-toggle" type="button" id="sidebarToggle" aria-controls="sidebar" aria-label="Collapse menu" title="Show or hide the menu"><i class="bi bi-list"></i></button>
             <h1><?= $this->renderSection('title') ?></h1>
             <div class="user">
                 <div class="text-end d-none d-sm-block lh-sm">
@@ -117,6 +120,28 @@ $roleIcon = ['head_librarian' => 'award', 'librarian' => 'person-badge', 'studen
             yes.disabled = true;
             if (form) { form.submit(); }   // submit() skips the submit event, so no second prompt
         });
+    })();
+    // Burger: on wide screens it shrinks the sidebar to icons only (remembered on every page);
+    // on small screens it slides the full menu in and out.
+    (function () {
+        const btn = document.getElementById('sidebarToggle');
+        const sb = document.getElementById('sidebar');
+        const root = document.documentElement;
+        const wide = window.matchMedia('(min-width: 992px)');
+        const label = () => btn.setAttribute('aria-label', wide.matches
+            ? (root.classList.contains('sidebar-collapsed') ? 'Expand menu' : 'Collapse menu')
+            : (sb.classList.contains('open') ? 'Close menu' : 'Open menu'));
+        btn.addEventListener('click', function () {
+            if (wide.matches) {
+                const collapsed = root.classList.toggle('sidebar-collapsed');
+                try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); } catch (e) {}
+            } else {
+                sb.classList.toggle('open');
+            }
+            label();
+        });
+        wide.addEventListener('change', label);
+        label();
     })();
     document.addEventListener('click', function (e) {
         const sb = document.getElementById('sidebar');

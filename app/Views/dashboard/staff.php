@@ -26,15 +26,15 @@
         </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <a class="stat" href="<?= site_url('library?tab=books') ?>">
+        <a class="stat" href="<?= site_url('library?tab=collections') ?>">
             <span class="icon good"><i class="bi bi-check2-circle"></i></span>
             <span><span class="value d-block"><?= $bookStats['available'] ?></span><span class="label">Copies on the shelf</span></span>
         </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <a class="stat" href="<?= site_url('fines') ?>">
-            <span class="icon warn"><i class="bi bi-cash-coin"></i></span>
-            <span><span class="value d-block"><?= money($fineTotals['unpaid']['total']) ?></span><span class="label">Unpaid fines (<?= $fineTotals['unpaid']['n'] ?>)</span></span>
+        <a class="stat" href="<?= site_url('credits') ?>">
+            <span class="icon warn"><i class="bi bi-shield-exclamation"></i></span>
+            <span><span class="value d-block"><?= $restricted ?></span><span class="label">Students with borrowing limits · <?= $blocked ?> blocked</span></span>
         </a>
     </div>
 
@@ -58,9 +58,9 @@
             </a>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <a class="stat" href="<?= site_url('reports') ?>">
-                <span class="icon good"><i class="bi bi-cash-stack"></i></span>
-                <span><span class="value d-block"><?= money($fineTotals['paid']['total']) ?></span><span class="label">Fines collected (all time)</span></span>
+            <a class="stat" href="<?= site_url('credits?tab=appeals') ?>">
+                <span class="icon <?= $appeals > 0 ? 'bad' : 'good' ?>"><i class="bi bi-chat-square-text"></i></span>
+                <span><span class="value d-block"><?= $appeals ?></span><span class="label">Credit appeals waiting</span></span>
             </a>
         </div>
     <?php else: ?>
@@ -77,8 +77,8 @@
                 <span><span class="value d-block"><?= $loans['due_today'] ?></span><span class="label">Due today</span></span></div>
         </div>
         <div class="col-sm-6 col-xl-3">
-            <div class="stat"><span class="icon good"><i class="bi bi-cash-stack"></i></span>
-                <span><span class="value d-block"><?= money($fineTotals['collected_today']) ?></span><span class="label">Fines collected today</span></span></div>
+            <a class="stat" href="<?= site_url('credits?tab=students&tier=blocked') ?>"><span class="icon bad"><i class="bi bi-slash-circle"></i></span>
+                <span><span class="value d-block"><?= $blocked ?></span><span class="label">Students blocked from borrowing</span></span></a>
         </div>
     <?php endif; ?>
 </div>
@@ -157,8 +157,25 @@
         </div>
 
         <div class="panel">
+            <h2 class="panel-title"><i class="bi bi-shield-exclamation"></i> Students with credits
+                <a class="ms-auto small" href="<?= site_url('credits') ?>"><?= esc(module_title('credits')) ?></a></h2>
+            <?php if (! $atRisk): ?>
+                <div class="empty"><i class="bi bi-emoji-smile"></i>Every student is in good standing.</div>
+            <?php else: ?>
+                <ul class="list-unstyled mb-0">
+                    <?php foreach ($atRisk as $s): ?>
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <a class="text-reset" href="<?= site_url('members/' . $s['id']) ?>"><?= esc($s['name']) ?><span class="d-block small text-muted"><?= esc($s['id_number']) ?></span></a>
+                            <?= credit_badge($s['credits']) ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </div>
+
+        <div class="panel">
             <h2 class="panel-title"><i class="bi bi-box-seam"></i> Titles with no copies available
-                <a class="ms-auto small" href="<?= site_url('library?tab=books') ?>">Books</a></h2>
+                <a class="ms-auto small" href="<?= site_url('library?tab=collections') ?>">Collections</a></h2>
             <?php if (! $lowStock): ?>
                 <div class="empty"><i class="bi bi-check2-circle"></i>Every title has a copy on the shelf.</div>
             <?php else: ?>

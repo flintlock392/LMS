@@ -10,7 +10,6 @@ $tabs = [
     'overdue'     => 'Overdue',
     'returned'    => 'Returned',
     'lost'        => 'Lost',
-    'books'       => 'Books',
 ];
 // Build a link that keeps the search and date range when switching tabs.
 $url = static function (array $extra = []) use ($tab, $q, $from, $to, $course, $category): string {
@@ -19,7 +18,7 @@ $url = static function (array $extra = []) use ($tab, $q, $from, $to, $course, $
     return site_url('library') . '?' . http_build_query($params);
 };
 $isLoanTab = in_array($tab, ['all', 'borrowed', 'overdue', 'returned', 'lost'], true);
-$isBookTab = in_array($tab, ['collections', 'books'], true);
+$isBookTab = $tab === 'collections';
 ?>
 <?= $this->extend('layouts/app') ?>
 <?= $this->section('title') ?>Library<?= $this->endSection() ?>
@@ -119,7 +118,7 @@ $isBookTab = in_array($tab, ['collections', 'books'], true);
                                 <div class="sub">Due back <?= fmt_date(date('Y-m-d', strtotime('+' . (int) setting('loan_days') . ' days'))) ?> if issued today</div>
                             <?php else: ?>
                                 Due <?= fmt_date($r['due_date']) ?>
-                                <?php if ($r['days_late'] > 0): ?><div class="sub text-danger"><?= $r['days_late'] ?>d late · <?= money($r['est_fine']) ?> fine</div><?php else: ?><div class="sub">On time</div><?php endif; ?>
+                                <?php if ($r['days_late'] > 0): ?><div class="sub text-danger"><?= $r['days_late'] ?>d late · +<?= $r['est_credits'] ?> credits</div><?php else: ?><div class="sub">On time</div><?php endif; ?>
                             <?php endif; ?>
                         </td>
                         <td class="actions">
@@ -132,7 +131,7 @@ $isBookTab = in_array($tab, ['collections', 'books'], true);
                                 <button class="btn btn-sm btn-nook" type="button" data-bs-toggle="modal" data-bs-target="#returnModal"
                                         data-action="<?= site_url('requests/' . $r['id'] . '/receive') ?>"
                                         data-title="<?= esc($r['title']) ?>" data-student="<?= esc($r['borrower_name']) ?>"
-                                        data-late="<?= $r['days_late'] > 0 ? $r['days_late'] . ' day(s) late — overdue fine ' . money($r['est_fine']) . ' will be charged.' : 'On time — no overdue fine.' ?>">
+                                        data-late="<?= $r['days_late'] > 0 ? $r['days_late'] . ' day(s) late — +' . $r['est_credits'] . ' credit(s) will be added.' : 'On time — no credits added.' ?>">
                                     <i class="bi bi-box-arrow-in-down-left me-1"></i>Receive return</button>
                             <?php endif; ?>
                             <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#decline-<?= $r['id'] ?>">Decline</button>
@@ -167,14 +166,14 @@ $isBookTab = in_array($tab, ['collections', 'books'], true);
                         <td><?= fmt_date($l['borrowed_at']) ?><div class="sub">by <?= esc($l['issued_by_name'] ?? '—') ?></div></td>
                         <td><?= fmt_date($l['due_date']) ?><?php if ($l['returned_at']): ?><div class="sub"><?= $l['status'] === 'lost' ? 'Reported' : 'Back' ?> <?= fmt_date($l['returned_at']) ?></div><?php endif; ?></td>
                         <td><?= status_badge($l['status'], $l['due_date']) ?>
-                            <?php if ($l['days_late'] > 0): ?><div class="sub"><?= $l['days_late'] ?>d late · <?= money($l['est_fine']) ?></div><?php endif; ?>
+                            <?php if ($l['days_late'] > 0): ?><div class="sub"><?= $l['days_late'] ?>d late · +<?= $l['est_credits'] ?> credits</div><?php endif; ?>
                             <?php if ($l['condition'] === 'damaged'): ?><div class="sub text-danger">Damaged</div><?php endif; ?></td>
                         <td class="actions">
                             <?php if ($l['status'] === 'borrowed'): ?>
                                 <button class="btn btn-sm btn-nook" type="button" data-bs-toggle="modal" data-bs-target="#returnModal"
                                         data-action="<?= site_url('circulation/' . $l['id'] . '/return') ?>"
                                         data-title="<?= esc($l['title']) ?>" data-student="<?= esc($l['borrower_name']) ?>"
-                                        data-late="<?= $l['days_late'] > 0 ? $l['days_late'] . ' day(s) late — overdue fine ' . money($l['est_fine']) . ' will be charged.' : 'On time — no overdue fine.' ?>">Return</button>
+                                        data-late="<?= $l['days_late'] > 0 ? $l['days_late'] . ' day(s) late — +' . $l['est_credits'] . ' credit(s) will be added.' : 'On time — no credits added.' ?>">Return</button>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -185,10 +184,17 @@ $isBookTab = in_array($tab, ['collections', 'books'], true);
         <?php endif; ?>
 
     <?php elseif ($tab === 'collections'): ?>
-        <!-- ===== Collections: the catalog ===== -->
-        <?php if (is_head()): ?>
-            <div class="d-flex justify-content-end mb-2"><a class="btn btn-sm btn-outline-nook" href="<?= site_url('categories') ?>"><i class="bi bi-tags me-1"></i>Manage categories</a></div>
-        <?php endif; ?>
+        <!-- ===== Collections: the catalog, unavailable and fewest copies left first ===== -->
+        <div class="d-flex flex-wrap align-items-center gap-3 small text-muted mb-2">
+            <span><strong class="text-body"><?= $stats['copies'] ?></strong> copies owned</span>
+            <span><strong class="text-body"><?= $stats['available'] ?></strong> on the shelf</span>
+            <span><strong class="text-body"><?= $stats['on_loan'] ?></strong> on loan</span>
+            <span><strong class="text-danger"><?= $stats['unavailable'] ?></strong> unavailable</span>
+            <span><strong class="text-warning-emphasis"><?= $stats['low'] ?></strong> with few copies left</span>
+            <?php if (is_head()): ?>
+                <a class="btn btn-sm btn-outline-nook ms-auto" href="<?= site_url('categories') ?>"><i class="bi bi-tags me-1"></i>Manage categories</a>
+            <?php endif; ?>
+        </div>
         <?php if (! $rows): ?>
             <div class="empty"><i class="bi bi-search"></i>No titles match.</div>
         <?php else: ?>
@@ -220,75 +226,6 @@ $isBookTab = in_array($tab, ['collections', 'books'], true);
             <?= $pager->links('default', 'nook') ?>
         <?php endif; ?>
 
-    <?php else: ?>
-        <!-- ===== Books: stock levels (formerly Inventory) ===== -->
-        <div class="row g-4">
-            <div class="col-12">
-                <div class="d-flex flex-wrap gap-3 small text-muted mb-2">
-                    <span><strong class="text-body"><?= $stats['copies'] ?></strong> copies owned</span>
-                    <span><strong class="text-body"><?= $stats['available'] ?></strong> on the shelf</span>
-                    <span><strong class="text-body"><?= $stats['on_loan'] ?></strong> on loan</span>
-                    <span><strong class="text-body"><?= $stats['unavailable'] ?></strong> title(s) unavailable</span>
-                </div>
-                <?php if (! is_head()): ?><p class="small text-muted">View only. Ask the Head Librarian to add or remove copies.</p><?php endif; ?>
-                <?php if (! $rows): ?>
-                    <div class="empty"><i class="bi bi-box-seam"></i>No titles match.</div>
-                <?php else: ?>
-                    <div class="table-responsive"><table class="table table-nook">
-                        <thead><tr><th>Title</th><th>Shelf</th><th class="text-center">Owned</th><th class="text-center">On loan</th><th>On the shelf</th></tr></thead>
-                        <tbody><?php foreach ($rows as $b): ?>
-                            <tr>
-                                <td><a class="text-reset" href="<?= site_url('books/' . $b['id']) ?>"><?= esc($b['title']) ?></a><div class="sub"><?= esc($b['isbn']) ?></div></td>
-                                <td><?= esc($b['shelf_location'] ?? '—') ?></td>
-                                <td class="text-center"><?= (int) $b['stock_count'] ?></td>
-                                <td class="text-center"><?= (int) $b['on_loan'] ?></td>
-                                <td><?= availability_badge((int) $b['available'], (int) $b['stock_count']) ?>
-                                    </td>
-                            </tr>
-                        <?php endforeach; ?></tbody>
-                    </table></div>
-                    <?= $pager->links('default', 'nook') ?>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <section class="history-card mt-4" aria-labelledby="history-title">
-            <h3 class="panel-title mb-1" id="history-title"><i class="bi bi-clock-history"></i> Stock history</h3>
-            <p class="history-desc">
-                Every change to the number of copies: when it happened, which title, how many copies were added or removed,
-                the reason, and who made the change.
-                <?= $from !== '' || $to !== ''
-                    ? 'Only changes made ' . ($from !== '' && $to !== '' ? 'from ' . fmt_date($from) . ' to ' . fmt_date($to) : ($from !== '' ? 'on or after ' . fmt_date($from) : 'on or before ' . fmt_date($to))) . ' are listed.'
-                    : 'Newest changes first.' ?>
-            </p>
-            <?php if (! $log): ?>
-                <div class="empty"><i class="bi bi-inbox"></i>No stock changes in this period.</div>
-            <?php else: ?>
-                <div class="table-responsive"><table class="table table-nook history-table">
-                    <colgroup><col style="width:16%"><col style="width:30%"><col style="width:15%"><col style="width:25%"><col style="width:14%"></colgroup>
-                    <thead><tr><th>Date</th><th>Title</th><th>Change</th><th>Reason</th><th>Changed by</th></tr></thead>
-                    <tbody><?php foreach ($log as $e): $up = $e['change'] > 0; ?>
-                        <tr>
-                            <td><?= fmt_date($e['created_at']) ?><div class="sub"><?= date('g:i A', strtotime($e['created_at'])) ?></div></td>
-                            <td><a class="text-reset fw-medium" href="<?= site_url('books/' . $e['book_id']) ?>"><?= esc($e['title']) ?></a></td>
-                            <td>
-                                <span class="pill <?= $up ? 'pill-success' : 'pill-danger' ?>"><i class="bi bi-<?= $up ? 'plus' : 'dash' ?>"></i><?= abs((int) $e['change']) ?> cop<?= abs((int) $e['change']) === 1 ? 'y' : 'ies' ?></span>
-                                <div class="sub mt-1">Total after: <?= (int) $e['stock_after'] ?></div>
-                            </td>
-                            <td>
-                                <div class="fw-medium"><?= esc(InventoryLogModel::LABELS[$e['reason']] ?? $e['reason']) ?></div>
-                                <div class="sub"><?= $e['notes'] ? esc($e['notes']) : '<span class="opacity-50">No description</span>' ?></div>
-                            </td>
-                            <td class="sub"><?= esc($e['user_name'] ?? 'System') ?></td>
-                        </tr>
-                    <?php endforeach; ?></tbody>
-                </table></div>
-                <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-                    <span class="small text-muted"><?= pager_info($logPager, 'history', 'changes') ?></span>
-                    <div class="ms-auto"><?= $logPager->links('history', 'nook') ?></div>
-                </div>
-            <?php endif; ?>
-        </section>
     <?php endif; ?>
 </div>
 
@@ -373,7 +310,7 @@ $isBookTab = in_array($tab, ['collections', 'books'], true);
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <p class="form-text mb-0">Due back <?= fmt_date(date('Y-m-d', strtotime('+' . (int) setting('loan_days') . ' days'))) ?> (<?= (int) setting('loan_days') ?>-day loan). Max <?= (int) setting('max_loans') ?> books per student; students with overdue books<?= setting('block_unpaid_fines') === '1' ? ' or unpaid fines' : '' ?> can't borrow.</p>
+                <p class="form-text mb-0">Usually due back <?= fmt_date(date('Y-m-d', strtotime('+' . (int) setting('loan_days') . ' days'))) ?> (<?= (int) setting('loan_days') ?>-day loan). Up to <?= (int) setting('max_loans') ?> books per student, fewer for students with credits; students with overdue books or <?= \App\Libraries\CreditPolicy::MAX ?> credits can't borrow.</p>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button><button class="btn btn-nook"><i class="bi bi-check2 me-1"></i>Issue book</button></div>
         </form>
@@ -395,9 +332,9 @@ $isBookTab = in_array($tab, ['collections', 'books'], true);
                         <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="condition" id="c-<?= $v ?>" value="<?= $v ?>" <?= $v === 'good' ? 'checked' : '' ?>><label class="form-check-label" for="c-<?= $v ?>"><?= $label ?></label></div>
                     <?php endforeach; ?>
                 </div>
-                <div class="mb-3 d-none" id="damageFee"><label class="form-label" for="damage_fee">Damage fee</label>
-                    <input class="form-control" type="number" step="0.01" min="0" id="damage_fee" name="damage_fee" value="<?= esc(setting('damaged_book_fee')) ?>"></div>
-                <div class="small text-danger mb-3 d-none" id="lostNote">A lost book fee of <?= money(setting('lost_book_fee')) ?> will be charged and one copy removed from stock.</div>
+                <div class="mb-3 d-none" id="damageFee"><label class="form-label" for="damage_credits">Damage credits</label>
+                    <input class="form-control" type="number" step="1" min="0" max="20" id="damage_credits" name="damage_credits" value="<?= (int) setting('damaged_credits') ?>"></div>
+                <div class="small text-danger mb-3 d-none" id="lostNote">+<?= (int) setting('lost_credits') ?> credits will be added to the student and one copy removed from stock.</div>
                 <label class="form-label" for="r-notes">Notes</label>
                 <input class="form-control" id="r-notes" name="notes" maxlength="255" placeholder="Optional">
             </div>
