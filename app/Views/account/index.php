@@ -16,7 +16,7 @@
                     <dt class="col-5">Position</dt><dd class="col-7"><?= esc($user['position'] ?? '—') ?></dd>
                 <?php endif; ?>
             </dl>
-            <p class="small text-muted">To change your name or ID number, please ask the Head Librarian.</p>
+            <?php if (! is_head()): ?><p class="small text-muted">To change your name or ID number, please ask the Head Librarian.</p><?php endif; ?>
             <form method="post" action="<?= site_url('account/profile') ?>">
                 <?= csrf_field() ?>
                 <div class="mb-3"><label class="form-label" for="email">Email</label>

@@ -1,4 +1,8 @@
-<?php $editing = $user !== null; ?>
+<?php
+$editing = $user !== null;
+// Head Librarian accounts: position and user level are fixed (shown, but not editable).
+$isHead = $editing && $user['role'] === \App\Models\UserModel::HEAD;
+?>
 <?= $this->extend('layouts/app') ?>
 <?= $this->section('title') ?><?= $editing ? 'Edit staff account' : 'Add staff' ?><?= $this->endSection() ?>
 
@@ -27,16 +31,27 @@
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="position">Position / title</label>
-                <input class="form-control" id="position" name="position" value="<?= esc(old('position', $user['position'] ?? '', false)) ?>" maxlength="100" placeholder="e.g. Circulation Librarian">
+                <?php if ($isHead): ?>
+                    <div class="fixed-field" id="position" aria-describedby="fixed-help"><i class="bi bi-lock"></i><?= esc($user['position'] ?: role_label($user['role'])) ?></div>
+                <?php else: ?>
+                    <input class="form-control" id="position" name="position" value="<?= esc(old('position', $user['position'] ?? '', false)) ?>" maxlength="100" placeholder="e.g. Circulation Librarian">
+                <?php endif; ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="role">User level *</label>
-                <select class="form-select" id="role" name="role" required>
-                    <?php $r = old('role', $user['role'] ?? 'librarian'); foreach (\App\Models\UserModel::STAFF_ROLES as $role): ?>
-                        <option value="<?= $role ?>" <?= $r === $role ? 'selected' : '' ?>><?= esc(role_label($role)) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <div class="form-text">Head Librarians can manage staff, settings, fines and inventory.</div>
+                <?php if ($isHead): ?>
+                    <!-- A Head Librarian can't be changed to Librarian Staff, so the level is fixed. -->
+                    <div class="fixed-field" id="role" aria-describedby="fixed-help"><i class="bi bi-lock"></i><?= esc(role_label($user['role'])) ?></div>
+                    <input type="hidden" name="role" value="<?= \App\Models\UserModel::HEAD ?>">
+                    <div class="form-text" id="fixed-help">Position and user level are fixed for Head Librarian accounts.</div>
+                <?php else: ?>
+                    <select class="form-select" id="role" name="role" required>
+                        <?php $r = old('role', $user['role'] ?? 'librarian'); foreach (\App\Models\UserModel::STAFF_ROLES as $role): ?>
+                            <option value="<?= $role ?>" <?= $r === $role ? 'selected' : '' ?>><?= esc(role_label($role)) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="form-text">Head Librarians can manage staff, settings, fines and inventory.</div>
+                <?php endif; ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="password"><?= $editing ? 'Reset password' : 'Temporary password *' ?></label>

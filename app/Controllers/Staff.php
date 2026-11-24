@@ -64,19 +64,22 @@ class Staff extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        $data = $this->collect();
-        if ($id === $this->me() && $data['role'] !== UserModel::HEAD) {
-            return redirect()->back()->withInput()->with('error', 'You can\'t remove your own Head Librarian access.');
+        $before = $this->users->find($id);
+        $data   = $this->collect();
+
+        // A Head Librarian can never be changed to Librarian Staff (promotion the other way is allowed).
+        if ($before['role'] === UserModel::HEAD && $data['role'] !== UserModel::HEAD) {
+            return redirect()->back()->withInput()->with('error', 'Head Librarian accounts can\'t be changed to Librarian Staff.');
         }
-        if ($data['role'] !== UserModel::HEAD && $this->isLastHead($id)) {
-            return redirect()->back()->withInput()->with('error', 'There must always be at least one Head Librarian.');
+        // A Head Librarian's position is fixed too: keep what is saved.
+        if ($before['role'] === UserModel::HEAD) {
+            $data['position'] = $before['position'];
         }
 
         $password = (string) $this->request->getPost('password');
         if ($password !== '') {
             $data['password'] = $password;
         }
-        $before = $this->users->find($id);
         $this->users->update($id, $data);
         log_activity('staff', 'edited', 'Edited staff account ' . $data['name'] . ' (' . $data['id_number'] . ')'
             . ($before['role'] !== $data['role'] ? ' · user level changed to ' . role_label($data['role']) : '')

@@ -308,6 +308,14 @@ a.stat:hover { border-color: var(--cream-300); box-shadow: 0 4px 12px rgba(85,52
 }
 .student-chip { background: var(--cream-100); border-radius: 10px; padding: .5rem .75rem; font-size: .82rem; line-height: 1.5; }
 
+/* Read-only value shown where a form field would be (e.g. a Head Librarian's position and user level) */
+.fixed-field {
+    display: flex; align-items: center; gap: .5rem; min-height: calc(1.5em + .75rem + 2px);
+    padding: .375rem .75rem; border: 1px dashed #dccab2; border-radius: var(--bs-border-radius, .375rem);
+    background: #f3ece2; color: #6b5a50; cursor: not-allowed; user-select: none;
+}
+.fixed-field i { color: var(--muted); }
+
 /* Update Stock → "Adjust copies" dialog */
 .adjust-modal { background: #fdf8ef; border: 1px solid #ecdcc4; border-radius: 16px; }
 .adjust-modal .modal-header { padding: 1.1rem 1.25rem 0; }
