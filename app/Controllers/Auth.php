@@ -52,6 +52,55 @@ class Auth extends BaseController
         return redirect()->to('/dashboard')->with('success', 'Welcome back, ' . $user['name'] . '! You are signed in as ' . role_label($user['role']) . '.');
     }
 
+    /**
+     * "Go to dashboard" on the home page: someone already signed in must type
+     * their password again before the dashboard opens. Too many wrong tries
+     * sign the account out.
+     */
+    public function confirm()
+    {
+        if (! session()->get('isLoggedIn')) {
+            return redirect()->to('/login');
+        }
+
+        $user = (new UserModel())->find((int) session()->get('userId'));
+        if (! $user || $user['status'] !== 'active') {
+            $this->signOut();
+
+            return redirect()->to('/login')->with('error', 'Please log in again.');
+        }
+
+        $password = (string) $this->request->getPost('password');
+        if ($password === '') {
+            return redirect()->to('/')->with('error', 'Enter your password to go to the dashboard.');
+        }
+
+        if (! password_verify($password, $user['password'])) {
+            $fails = (int) session()->get('confirmFails') + 1;
+            log_activity('auth', 'confirm_failed', 'Wrong password when reopening the dashboard as ' . $user['name'], 'user', (int) $user['id']);
+            if ($fails >= 5) {
+                log_activity('auth', 'logout', $user['name'] . ' was signed out after 5 wrong passwords', 'user', (int) $user['id']);
+                $this->signOut();
+
+                return redirect()->to('/login')->with('error', 'Too many wrong passwords. You have been signed out.');
+            }
+            session()->set('confirmFails', $fails);
+
+            return redirect()->to('/')->with('error', 'Incorrect password. ' . (5 - $fails) . ' tr' . (5 - $fails === 1 ? 'y' : 'ies') . ' left before you are signed out.');
+        }
+
+        session()->remove('confirmFails');
+
+        return redirect()->to('/dashboard');
+    }
+
+    /** Ends the sign-in but keeps the session, so the message after the redirect still shows. */
+    private function signOut(): void
+    {
+        session()->remove(['isLoggedIn', 'userId', 'idNumber', 'name', 'role', 'confirmFails']);
+        session()->regenerate(true);
+    }
+
     public function forgot()
     {
         return view('auth/forgot');

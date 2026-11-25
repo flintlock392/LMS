@@ -17,7 +17,30 @@
                         <div class="login-card-inner">
                             <h1>Hello!</h1>
                             <p class="lead-sm">You are signed in as <strong><?= esc(session()->get('name')) ?></strong> (<?= esc(role_label(session()->get('role'))) ?>).</p>
-                            <a class="btn btn-nook" href="<?= site_url('dashboard') ?>">Go to dashboard</a>
+                            <?= view('partials/flash') ?>
+
+                            <!-- Going back to the dashboard asks for the password again -->
+                            <form class="text-start" method="post" action="<?= site_url('login/confirm') ?>" novalidate>
+                                <?= csrf_field() ?>
+                                <div class="mb-3">
+                                    <label class="form-label" for="confirm-password">Enter your password to continue</label>
+                                    <div class="position-relative">
+                                        <input class="form-control pe-5" type="password" id="confirm-password" name="password" placeholder="Enter..."
+                                               autocomplete="current-password" required autofocus>
+                                        <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-1 border-0"
+                                                onclick="const p=document.getElementById('confirm-password');p.type=p.type==='password'?'text':'password';this.firstElementChild.classList.toggle('bi-eye');this.firstElementChild.classList.toggle('bi-eye-slash')"
+                                                aria-label="Show or hide password"><i class="bi bi-eye"></i></button>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button class="btn btn-nook btn-wide" type="submit">Go to dashboard</button>
+                                </div>
+                            </form>
+                            <!-- Signs this account out and shows the login form for someone else -->
+                            <form class="small-links" method="post" action="<?= site_url('logout') ?>">
+                                <?= csrf_field() ?>
+                                <button type="submit" class="link-button">Not you? Log in with a different account</button>
+                            </form>
                         </div>
                     </div>
                 <?php else: ?>

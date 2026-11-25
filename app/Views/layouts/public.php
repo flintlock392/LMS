@@ -29,7 +29,7 @@ $active = static fn (array $paths) => in_array($path, $paths, true) ? ' active' 
             <a class="nav-link-pub<?= $active(['about']) ?>" href="<?= site_url('about') ?>"<?= $active(['about']) ? ' aria-current="page"' : '' ?>>About Us</a>
         </nav>
         <?php if (session()->get('isLoggedIn')): ?>
-            <a class="btn-pub-login ms-auto" href="<?= site_url('dashboard') ?>">Dashboard</a>
+            <a class="btn-pub-login ms-auto" href="<?= site_url('/') ?>" title="Enter your password to open your dashboard">Dashboard</a>
         <?php endif; ?>
     </div>
 </header>

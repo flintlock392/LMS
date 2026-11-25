@@ -117,6 +117,10 @@ a:hover { color: var(--brown-900); }
 .login-card .small-links { font-size: .75rem; text-align: center; margin: .75rem 0 0; }
 .login-card .small-links a { color: var(--brown-600); text-decoration: underline; text-underline-offset: 2px; }
 .login-card .small-links a:hover { color: var(--brown-900); }
+.login-card .btn-nook.btn-wide { width: auto !important; padding-left: 1.75rem; padding-right: 1.75rem; white-space: nowrap; }
+.login-card .link-button { background: none; border: 0; padding: 0; font: inherit; color: var(--brown-600); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.login-card .link-button:hover { color: var(--brown-900); }
+.login-card .link-button:focus-visible { outline: 2px solid var(--brown-600); outline-offset: 2px; border-radius: 2px; }
 
 /* Login page: one fixed screen, no scrolling (on screens big enough to fit it) */
 @media (min-width: 992px) and (min-height: 560px) {

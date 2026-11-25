@@ -20,6 +20,7 @@ $routes->get('/', 'Home::index');
 $routes->get('about', 'Home::about');
 $routes->get('login', 'Home::index');
 $routes->post('login', 'Auth::attempt');
+$routes->post('login/confirm', 'Auth::confirm');   // "Go to dashboard" from the home page asks for the password again
 $routes->get('forgot-password', 'Auth::forgot');
 $routes->post('logout', 'Auth::logout');
 $routes->get('catalog', 'Catalog::index');
