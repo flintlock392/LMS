@@ -48,17 +48,21 @@ $routes->group('', ['filter' => 'role:student'], static function ($routes) {
 
 // ---- Head librarian only (declared before the (:num) routes below) ---------
 $routes->group('', ['filter' => $head], static function ($routes) {
-    $routes->post('books/(:num)/delete', 'Books::delete/$1');
+    $routes->post('books/(:num)/archive', 'Books::archive/$1');
+
+    // Archive: archived books, categories and accounts, with Restore
+    $routes->get('archive', 'Archive::index');
+    $routes->post('archive/(:segment)/(:num)/restore', 'Archive::restore/$1/$2');
 
     $routes->get('categories', 'Categories::index');
     $routes->post('categories/create', 'Categories::create');
     $routes->post('categories/(:num)/update', 'Categories::update/$1');
-    $routes->post('categories/(:num)/delete', 'Categories::delete/$1');
+    $routes->post('categories/(:num)/archive', 'Categories::archive/$1');
 
     $routes->get('members/(:num)/edit', 'Members::edit/$1');
     $routes->post('members/(:num)/update', 'Members::update/$1');
     $routes->post('members/(:num)/status', 'Members::toggleStatus/$1');
-    $routes->post('members/(:num)/delete', 'Members::delete/$1');
+    $routes->post('members/(:num)/archive', 'Members::archive/$1');
 
     $routes->post('inventory/adjust', 'Inventory::adjust');
 
@@ -73,7 +77,7 @@ $routes->group('', ['filter' => $head], static function ($routes) {
     $routes->get('staff/(:num)/edit', 'Staff::edit/$1');
     $routes->post('staff/(:num)/update', 'Staff::update/$1');
     $routes->post('staff/(:num)/status', 'Staff::toggleStatus/$1');
-    $routes->post('staff/(:num)/delete', 'Staff::delete/$1');
+    $routes->post('staff/(:num)/archive', 'Staff::archive/$1');
 
     $routes->get('settings', 'Settings::index');
     $routes->post('settings', 'Settings::save');

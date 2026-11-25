@@ -33,18 +33,18 @@ class Categories extends BaseController
         return $this->persist($id);
     }
 
-    public function delete(int $id)
+    /** Archived categories are hidden; their books show as "Uncategorized" until the category is restored. */
+    public function archive(int $id)
     {
         $category = $this->categories->find($id);
         if (! $category) {
             return redirect()->to('/categories')->with('error', 'Category not found.');
         }
 
-        // The foreign key sets books.category_id to NULL, so books are kept as "uncategorized".
-        $this->categories->delete($id);
-        log_activity('book', 'category_deleted', 'Deleted category "' . $category['name'] . '"', 'category', $id);
+        $this->categories->delete($id);   // soft delete: sets archived_at
+        log_activity('book', 'category_archived', 'Archived category "' . $category['name'] . '"', 'category', $id);
 
-        return redirect()->to('/categories')->with('success', 'Category "' . $category['name'] . '" deleted. Its books are now uncategorized.');
+        return redirect()->to('/categories')->with('success', 'Category "' . $category['name'] . '" archived. Its books show as uncategorized until you restore it from the Archive page.');
     }
 
     private function persist(?int $id)

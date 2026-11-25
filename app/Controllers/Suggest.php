@@ -64,7 +64,8 @@ class Suggest extends BaseController
     {
         $b = db_connect()->table('users')
             ->select('users.id, users.name, users.id_number, users.course, users.status, users.credits')
-            ->where('users.role', UserModel::STUDENT);
+            ->where('users.role', UserModel::STUDENT)
+            ->where('users.archived_at', null);
 
         if ($match === 'student_no') {
             $b->like('users.id_number', $q);
@@ -101,6 +102,7 @@ class Suggest extends BaseController
     {
         $b = db_connect()->table('books')
             ->select('books.id, books.title, books.author, books.isbn')
+            ->where('books.archived_at', null)
             ->groupStart()->like('books.title', $q)->orLike('books.author', $q)->orLike('books.isbn', str_replace('-', '', $q))->groupEnd();
 
         if ($only === 'loans') {
@@ -124,6 +126,7 @@ class Suggest extends BaseController
         $rows = db_connect()->table('users')
             ->select('name, id_number, role, position, status')
             ->whereIn('role', UserModel::STAFF_ROLES)
+            ->where('archived_at', null)
             ->groupStart()->like('name', $q)->orLike('id_number', $q)->orLike('email', $q)->groupEnd()
             ->orderBy($this->startsWith(['name', 'id_number'], $q), 'DESC', false)
             ->orderBy('name')->limit(self::LIMIT)->get()->getResultArray();

@@ -48,15 +48,15 @@ $tabs = [
     <?php endif; ?>
 
     <?php if ($tab === 'students'): ?>
-        <form class="filters" method="get">
+        <form class="filters" method="get" data-filter-form>
             <input type="hidden" name="tab" value="students">
             <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($q) ?>" placeholder="Name, student number or course" aria-label="Search students" data-suggest="students">
-            <select class="form-select form-select-sm" name="tier" aria-label="Standing" onchange="this.form.submit()" style="max-width:200px">
+            <select class="form-select form-select-sm" name="tier" aria-label="Standing" style="max-width:200px">
                 <option value="">Any standing</option>
                 <?php foreach (CreditPolicy::TIERS as $t): ?><option value="<?= $t[1] ?>" <?= $tier === $t[1] ? 'selected' : '' ?>><?= esc($t[2]) ?></option><?php endforeach; ?>
             </select>
-            <button class="btn btn-sm btn-nook"><i class="bi bi-search"></i></button>
-            <?php if ($q !== '' || $tier !== ''): ?><a class="btn btn-sm btn-outline-nook" href="<?= site_url('credits') ?>"><i class="bi bi-x-lg me-1"></i>Clear</a><?php endif; ?>
+            <button class="btn btn-sm btn-nook" data-apply><i class="bi bi-funnel me-1"></i>Apply</button>
+            <?php if ($q !== '' || $tier !== ''): ?><a class="btn-clear" href="<?= site_url('credits') ?>"><i class="bi bi-x-circle"></i>Clear filters</a><?php endif; ?>
         </form>
         <?php if (! $rows): ?>
             <div class="empty"><i class="bi bi-people"></i>No students found.</div>
@@ -135,16 +135,16 @@ $tabs = [
         <?php endif; ?>
 
     <?php else: ?>
-        <form class="filters" method="get">
+        <form class="filters" method="get" data-filter-form>
             <input type="hidden" name="tab" value="history">
             <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($q) ?>" placeholder="Student name, number or book" aria-label="Search history" data-suggest="students">
-            <select class="form-select form-select-sm" name="direction" aria-label="Change" onchange="this.form.submit()" style="max-width:180px">
+            <select class="form-select form-select-sm" name="direction" aria-label="Change" style="max-width:180px">
                 <option value="">Added and reduced</option>
                 <option value="added" <?= $direction === 'added' ? 'selected' : '' ?>>Added only</option>
                 <option value="reduced" <?= $direction === 'reduced' ? 'selected' : '' ?>>Reduced only</option>
             </select>
-            <button class="btn btn-sm btn-nook"><i class="bi bi-search"></i></button>
-            <?php if ($q !== '' || $direction !== ''): ?><a class="btn btn-sm btn-outline-nook" href="<?= site_url('credits?tab=history') ?>"><i class="bi bi-x-lg me-1"></i>Clear</a><?php endif; ?>
+            <button class="btn btn-sm btn-nook" data-apply><i class="bi bi-funnel me-1"></i>Apply</button>
+            <?php if ($q !== '' || $direction !== ''): ?><a class="btn-clear" href="<?= site_url('credits?tab=history') ?>"><i class="bi bi-x-circle"></i>Clear filters</a><?php endif; ?>
         </form>
         <?php if (! $rows): ?>
             <div class="empty"><i class="bi bi-clock-history"></i>No credit changes yet.</div>

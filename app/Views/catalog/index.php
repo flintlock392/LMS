@@ -6,9 +6,9 @@ $spines = ['#6e7d4e', '#9a5530', '#4c6488', '#8e3b45', '#55342b', '#7a6a3a'];
 $public = $layout === 'layouts/public';
 ?>
 <?= $this->section('content') ?>
-<?php if ($public): ?><div class="container pb-5"><h1 class="pub-heading mb-3">Our books</h1><?= view('partials/flash') ?><div class="pub-panel"><?php else: ?><div class="panel"><?php endif; ?>
+<?php if ($public): ?><div class="container pb-5 catalog-page"><h1 class="pub-heading mb-3">Our books</h1><?= view('partials/flash') ?><div class="pub-panel catalog-panel"><?php else: ?><div class="panel"><?php endif; ?>
 
-    <form class="filters" method="get">
+    <form class="filters" method="get" data-filter-form>
         <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($filters['q']) ?>" placeholder="Search title, author or ISBN" aria-label="Search books"
                data-suggest="books" data-suggest-url="<?= site_url('catalog/suggest') ?>">
         <select class="form-select form-select-sm" name="category_id" aria-label="Category">
@@ -28,15 +28,16 @@ $public = $layout === 'layouts/public';
             <input class="form-check-input" type="checkbox" id="avail" name="availability" value="in_stock" <?= $filters['availability'] ? 'checked' : '' ?>>
             <label class="form-check-label small" for="avail">Available now</label>
         </div>
-        <button class="btn btn-sm btn-nook"><i class="bi bi-search"></i> Search</button>
+        <button class="btn btn-sm btn-nook" data-apply><i class="bi bi-funnel me-1"></i>Apply</button>
         <?php if ($filters['q'] !== '' || $filters['category_id'] !== '' || $filters['course'] !== '' || $filters['availability'] !== ''): ?>
-            <a class="btn btn-sm btn-outline-nook" href="<?= site_url('catalog') ?>"><i class="bi bi-x-lg me-1"></i>Clear</a>
+            <a class="btn-clear" href="<?= site_url('catalog') ?>"><i class="bi bi-x-circle"></i>Clear filters</a>
         <?php endif; ?>
     </form>
 
     <?php if (! $books): ?>
         <div class="empty"><i class="bi bi-search"></i>No books match your search.</div>
     <?php else: ?>
+        <div class="catalog-scroll" tabindex="0" aria-label="Book list">
         <div class="row g-3">
             <?php foreach ($books as $b): ?>
                 <div class="col-sm-6 col-xl-4">
@@ -56,6 +57,7 @@ $public = $layout === 'layouts/public';
                     </div>
                 </div>
             <?php endforeach; ?>
+        </div>
         </div>
         <?= $pager->links('default', 'nook') ?>
     <?php endif; ?>

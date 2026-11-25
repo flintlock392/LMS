@@ -27,8 +27,8 @@
                     <form method="post" action="<?= site_url('members/' . $user['id'] . '/status') ?>" data-confirm="<?= $user['status'] === 'active' ? 'Suspend this student? They will not be able to log in or borrow.' : 'Reactivate this student?' ?>">
                         <?= csrf_field() ?><button class="btn btn-sm <?= $user['status'] === 'active' ? 'btn-outline-warning' : 'btn-outline-success' ?>"><?= $user['status'] === 'active' ? 'Suspend' : 'Activate' ?></button>
                     </form>
-                    <form method="post" action="<?= site_url('members/' . $user['id'] . '/delete') ?>" data-confirm="Delete this student account permanently?">
-                        <?= csrf_field() ?><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    <form method="post" action="<?= site_url('members/' . $user['id'] . '/archive') ?>" data-confirm="Archive this student account? They won't be able to log in. You can restore it from the Archive page.">
+                        <?= csrf_field() ?><button class="btn btn-sm btn-outline-nook"><i class="bi bi-archive me-1"></i>Archive</button>
                     </form>
                 </div>
             <?php endif; ?>

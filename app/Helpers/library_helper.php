@@ -116,7 +116,7 @@ if (! function_exists('course_options')) {
     function course_options(): array
     {
         $tagged = array_column(
-            db_connect()->query("SELECT DISTINCT course FROM books WHERE course IS NOT NULL AND course <> '' ORDER BY course")->getResultArray(),
+            db_connect()->query("SELECT DISTINCT course FROM books WHERE archived_at IS NULL AND course IS NOT NULL AND course <> '' ORDER BY course")->getResultArray(),
             'course'
         );
 
@@ -305,7 +305,7 @@ if (! function_exists('nav_items')) {
             UserModel::HEAD => [
                 ['Dashboard', 'speedometer2', 'dashboard'],
                 ['Library', 'book', 'library', $collection],
-                ['User Management', 'people', 'members', ['members', 'staff']],
+                ['User Management', 'people', 'members', ['members', 'staff', 'archive']],
                 ['Credit Management', 'shield-exclamation', 'credits'],
                 ['Reports & Analytics', 'bar-chart-line', 'reports'],
                 ['System Settings', 'gear', 'settings'],

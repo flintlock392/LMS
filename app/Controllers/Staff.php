@@ -108,24 +108,24 @@ class Staff extends BaseController
         return redirect()->back()->with('success', $user['name'] . ' is now ' . $new . '.');
     }
 
-    public function delete(int $id)
+    /** Archived staff can't log in and are hidden from lists; the books they issued keep their name. */
+    public function archive(int $id)
     {
         $user = $this->staffMember($id);
         if (! $user) {
             return redirect()->to('/staff')->with('error', 'Staff member not found.');
         }
         if ($id === $this->me()) {
-            return redirect()->back()->with('error', 'You can\'t delete your own account.');
+            return redirect()->back()->with('error', 'You can\'t archive your own account.');
         }
         if ($this->isLastHead($id)) {
             return redirect()->back()->with('error', 'There must always be at least one Head Librarian.');
         }
 
-        // Their past circulation records stay; the "issued by" link is cleared by the foreign key.
-        $this->users->delete($id);
-        log_activity('staff', 'deleted', 'Deleted staff account ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
+        $this->users->delete($id);   // soft delete: sets archived_at
+        log_activity('staff', 'archived', 'Archived staff account ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
 
-        return redirect()->to('/staff')->with('success', $user['name'] . '\'s staff account was deleted.');
+        return redirect()->to('/staff')->with('success', $user['name'] . '\'s staff account was archived. You can restore it from the Archive page.');
     }
 
     private function staffMember(int $id): ?array

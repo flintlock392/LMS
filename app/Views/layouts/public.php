@@ -15,7 +15,8 @@ $active = static fn (array $paths) => in_array($path, $paths, true) ? ' active' 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="<?= asset('assets/css/app.css') ?>" rel="stylesheet">
 </head>
-<body class="public-body<?= in_array($path, ['', 'login'], true) ? ' is-home' : '' ?>">
+<?php // is-fixed: one screen, no page scrolling (login page and Books page) ?>
+<body class="public-body<?= in_array($path, ['', 'login'], true) ? ' is-home is-fixed' : '' ?><?= $path === 'catalog' ? ' is-catalog is-fixed' : '' ?>">
 <header class="public-nav">
     <div class="container d-flex align-items-center flex-wrap gap-3">
         <a class="brand" href="<?= site_url('/') ?>" aria-label="<?= esc(setting('library_name')) ?> home">
@@ -46,5 +47,6 @@ $active = static fn (array $paths) => in_array($path, $paths, true) ? ' active' 
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="<?= asset('assets/js/suggest.js') ?>" defer></script>
+<script src="<?= asset('assets/js/filters.js') ?>" defer></script>
 </body>
 </html>

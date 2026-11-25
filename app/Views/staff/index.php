@@ -8,9 +8,10 @@
         <h2 class="panel-title mb-0">Library staff</h2>
         <a class="btn btn-nook btn-sm ms-auto" href="<?= site_url('staff/new') ?>"><i class="bi bi-person-plus me-1"></i>Add staff</a>
     </div>
-    <form class="filters" method="get">
+    <form class="filters" method="get" data-filter-form>
         <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($q) ?>" placeholder="Name, Staff ID, email" aria-label="Search staff" data-suggest="staff">
-        <button class="btn btn-sm btn-nook"><i class="bi bi-search"></i></button>
+        <button class="btn btn-sm btn-nook" data-apply><i class="bi bi-search me-1"></i>Search</button>
+        <?php if ($q !== ''): ?><a class="btn-clear" href="<?= site_url('staff') ?>"><i class="bi bi-x-circle"></i>Clear filters</a><?php endif; ?>
     </form>
     <div class="table-responsive"><table class="table table-nook">
         <thead><tr><th>Name</th><th>Staff ID</th><th>User level</th><th>Books issued</th><th>Last login</th><th>Status</th><th class="text-end"></th></tr></thead>
@@ -29,8 +30,8 @@
                         <form class="d-inline" method="post" action="<?= site_url('staff/' . $u['id'] . '/status') ?>" data-confirm="<?= $u['status'] === 'active' ? 'Suspend' : 'Reactivate' ?> <?= esc($u['name']) ?>?">
                             <?= csrf_field() ?><button class="btn btn-sm btn-outline-warning" title="<?= $u['status'] === 'active' ? 'Suspend' : 'Activate' ?>"><i class="bi bi-<?= $u['status'] === 'active' ? 'pause-circle' : 'play-circle' ?>"></i></button>
                         </form>
-                        <form class="d-inline" method="post" action="<?= site_url('staff/' . $u['id'] . '/delete') ?>" data-confirm="Delete <?= esc($u['name']) ?>'s staff account permanently?">
-                            <?= csrf_field() ?><button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+                        <form class="d-inline" method="post" action="<?= site_url('staff/' . $u['id'] . '/archive') ?>" data-confirm="Archive <?= esc($u['name']) ?>'s staff account? They won't be able to log in. You can restore it from the Archive page.">
+                            <?= csrf_field() ?><button class="btn btn-sm btn-outline-nook" title="Archive" aria-label="Archive"><i class="bi bi-archive"></i></button>
                         </form>
                     <?php endif; ?>
                 </td>

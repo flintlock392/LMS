@@ -12,11 +12,15 @@ class CategoryModel extends Model
     protected $allowedFields = ['name', 'description'];
     protected $useTimestamps = true;
 
+    // "Archive" instead of delete: archived rows get archived_at and are left out of every query.
+    protected $useSoftDeletes = true;
+    protected $deletedField   = 'archived_at';
+
     /** All categories with the number of books and total copies in each. */
     public function withBookCounts(): array
     {
         return $this->select('categories.*, COUNT(books.id) AS book_count, COALESCE(SUM(books.stock_count), 0) AS copies')
-            ->join('books', 'books.category_id = categories.id', 'left')
+            ->join('books', 'books.category_id = categories.id AND books.archived_at IS NULL', 'left')
             ->groupBy('categories.id')
             ->orderBy('categories.name', 'ASC')
             ->findAll();

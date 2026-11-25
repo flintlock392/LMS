@@ -3,12 +3,13 @@
 namespace App\Controllers;
 
 use App\Models\BookModel;
+use App\Models\BookRequestModel;
 use App\Models\BorrowingModel;
 use App\Models\CategoryModel;
 use App\Models\InventoryLogModel;
 
 /**
- * Head Librarian: "Book Management" (full control, including delete + categories).
+ * Head Librarian: "Book Management" (full control, including archive + categories).
  * Librarian Staff: "Book Collection" (browse, add and edit titles).
  * Copy counts change through Inventory, so every change is logged.
  */
@@ -66,21 +67,27 @@ class Books extends BaseController
         return $this->persist($id);
     }
 
-    /** Head Librarian only. Titles with circulation history are kept for the records. */
-    public function delete(int $id)
+    /**
+     * Head Librarian only. Archiving hides the title everywhere but keeps it and
+     * its history; it can be restored from the Archive page.
+     */
+    public function archive(int $id)
     {
         $book = $this->books->find($id);
         if (! $book) {
             return redirect()->to('/library?tab=collections')->with('error', 'Book not found.');
         }
-        if ((new BorrowingModel())->where('book_id', $id)->countAllResults() > 0) {
-            return redirect()->back()->with('error', '"' . $book['title'] . '" has borrowing history, so it can\'t be deleted. Remove its copies in Inventory Management instead.');
+        if ((new BorrowingModel())->where('book_id', $id)->where('status', 'borrowed')->countAllResults() > 0) {
+            return redirect()->back()->with('error', '"' . $book['title'] . '" still has copies on loan. Archive it once they are returned.');
+        }
+        if ((new BookRequestModel())->where('book_id', $id)->where('status', 'pending')->countAllResults() > 0) {
+            return redirect()->back()->with('error', '"' . $book['title'] . '" has requests waiting under Library → Requested. Handle them first.');
         }
 
-        $this->books->delete($id);
-        log_activity('book', 'deleted', 'Deleted "' . $book['title'] . '" (ISBN ' . $book['isbn'] . ') from the catalog', 'book', $id);
+        $this->books->delete($id);   // soft delete: sets archived_at
+        log_activity('book', 'archived', 'Archived "' . $book['title'] . '" (ISBN ' . $book['isbn'] . ')', 'book', $id);
 
-        return redirect()->to('/library?tab=collections')->with('success', '"' . $book['title'] . '" was deleted.');
+        return redirect()->to('/library?tab=collections')->with('success', '"' . $book['title'] . '" was archived. You can restore it from the Archive page.');
     }
 
     private function persist(?int $id)

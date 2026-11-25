@@ -62,6 +62,7 @@ class Catalog extends BaseController
         $like = $db->escape($db->escapeLikeString($q) . '%');
         $rows = $db->table('books')
             ->select('title, author, isbn')
+            ->where('archived_at', null)
             ->groupStart()->like('title', $q)->orLike('author', $q)->orLike('isbn', str_replace('-', '', $q))->groupEnd()
             ->orderBy('(title LIKE ' . $like . ' OR author LIKE ' . $like . ')', 'DESC', false)   // "starts with" first
             ->orderBy('title')

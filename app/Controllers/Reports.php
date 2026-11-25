@@ -14,10 +14,8 @@ class Reports extends BaseController
 {
     public function index()
     {
-        [$from, $to] = $this->range();
-        $db          = db_connect();
-        $start       = $from . ' 00:00:00';
-        $end         = $to . ' 23:59:59';
+        [$from, $to, $start, $end] = $this->range();
+        $db = db_connect();
 
         $one = static fn (string $sql, array $binds = []) => (float) ($db->query($sql, $binds)->getRowArray()['v'] ?? 0);
 
@@ -96,11 +94,11 @@ class Reports extends BaseController
                 "SELECT u.name, u.role,
                     (SELECT COUNT(*) FROM borrowings b WHERE b.issued_by = u.id AND b.borrowed_at BETWEEN ? AND ?) issued,
                     (SELECT COUNT(*) FROM borrowings b WHERE b.received_by = u.id AND b.returned_at BETWEEN ? AND ?) received
-                 FROM users u WHERE u.role IN ('head_librarian', 'librarian') ORDER BY issued DESC",
+                 FROM users u WHERE u.role IN ('head_librarian', 'librarian') AND u.archived_at IS NULL ORDER BY issued DESC",
                 [$start, $end, $start, $end]
             )->getResultArray(),
             'utilization' => $stats['copies'] > 0 ? round($stats['on_loan'] / $stats['copies'] * 100) : 0,
-            'neverBorrowed' => (int) $db->query('SELECT COUNT(*) v FROM books WHERE NOT EXISTS (SELECT 1 FROM borrowings b WHERE b.book_id = books.id)')->getRowArray()['v'],
+            'neverBorrowed' => (int) $db->query('SELECT COUNT(*) v FROM books WHERE archived_at IS NULL AND NOT EXISTS (SELECT 1 FROM borrowings b WHERE b.book_id = books.id)')->getRowArray()['v'],
             'students'   => (new UserModel())->where('role', UserModel::STUDENT)->where('status', 'active')->countAllResults(),
         ];
     }
@@ -108,9 +106,9 @@ class Reports extends BaseController
     /** CSV downloads: loans, overdue, credits, inventory, students (head). */
     public function export(string $type)
     {
-        [$from, $to] = $this->range();
-        $db          = db_connect();
-        $range       = [$from . ' 00:00:00', $to . ' 23:59:59'];
+        [, , $start, $end] = $this->range();
+        $db    = db_connect();
+        $range = [$start, $end];
 
         switch ($type) {
             case 'loans':
@@ -149,7 +147,7 @@ class Reports extends BaseController
                     return redirect()->to('/reports')->with('error', 'Only the Head Librarian can export student records.');
                 }
                 $header = ['Student no.', 'Name', 'Email', 'Phone', 'Course', 'Year', 'Status', 'Registered'];
-                $rows   = $db->query("SELECT id_number, name, email, phone, course, year_level, status, created_at FROM users WHERE role = 'student' ORDER BY name")->getResultArray();
+                $rows   = $db->query("SELECT id_number, name, email, phone, course, year_level, status, created_at FROM users WHERE role = 'student' AND archived_at IS NULL ORDER BY name")->getResultArray();
                 break;
             default:
                 return redirect()->to('/reports')->with('error', 'Unknown report.');
@@ -169,19 +167,29 @@ class Reports extends BaseController
         return $this->response->download($type . '-report-' . date('Y-m-d') . '.csv', $csv)->setContentType('text/csv');
     }
 
-    /** Validated date range from the query string; defaults to the last 30 days. */
+    /**
+     * Date range from the query string. Both dates are optional:
+     * no start date = from the very first record, no end date = up to today.
+     *
+     * @return array{0: string, 1: string, 2: string, 3: string} [from, to, SQL start, SQL end]
+     */
     private function range(): array
     {
         $from = (string) $this->request->getGet('from');
         $to   = (string) $this->request->getGet('to');
         $ok   = static fn ($d) => (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && strtotime($d) !== false;
 
-        $from = $ok($from) ? $from : date('Y-m-d', strtotime('-29 days'));
-        $to   = $ok($to) ? $to : date('Y-m-d');
-        if ($from > $to) {
+        $from = $ok($from) ? $from : '';
+        $to   = $ok($to) ? $to : '';
+        if ($from !== '' && $to !== '' && $from > $to) {
             [$from, $to] = [$to, $from];
         }
 
-        return [$from, $to];
+        return [
+            $from,
+            $to,
+            ($from !== '' ? $from : '1000-01-01') . ' 00:00:00',
+            ($to !== '' ? $to : date('Y-m-d')) . ' 23:59:59',
+        ];
     }
 }

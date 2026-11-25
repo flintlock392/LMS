@@ -8,14 +8,15 @@
         <h2 class="panel-title mb-0">Students</h2>
         <a class="btn btn-nook btn-sm ms-auto" href="<?= site_url('members/new') ?>"><i class="bi bi-person-plus me-1"></i>Register student</a>
     </div>
-    <form class="filters" method="get">
+    <form class="filters" method="get" data-filter-form>
         <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($q) ?>" placeholder="Name, student no., email, course" aria-label="Search students" data-suggest="students">
         <select class="form-select form-select-sm" name="status" aria-label="Status" style="max-width:150px">
             <option value="">Any status</option>
             <option value="active" <?= $status === 'active' ? 'selected' : '' ?>>Active</option>
             <option value="suspended" <?= $status === 'suspended' ? 'selected' : '' ?>>Suspended</option>
         </select>
-        <button class="btn btn-sm btn-nook"><i class="bi bi-search"></i></button>
+        <button class="btn btn-sm btn-nook" data-apply><i class="bi bi-funnel me-1"></i>Apply</button>
+        <?php if ($q !== '' || $status !== ''): ?><a class="btn-clear" href="<?= site_url('members') ?>"><i class="bi bi-x-circle"></i>Clear filters</a><?php endif; ?>
     </form>
     <?php if (! $rows): ?>
         <div class="empty"><i class="bi bi-people"></i>No students found.</div>

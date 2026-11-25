@@ -8,7 +8,7 @@ use App\Models\UserModel;
 
 /**
  * Student accounts.
- * Head Librarian: "User Management" (register, edit, suspend, reset password, delete).
+ * Head Librarian: "User Management" (register, edit, suspend, reset password, archive).
  * Librarian Staff: "User Registration" (register and look up students).
  */
 class Members extends BaseController
@@ -113,22 +113,21 @@ class Members extends BaseController
         return redirect()->back()->with('success', $user['name'] . ' is now ' . $new . '.');
     }
 
-    public function delete(int $id)
+    /** Archived students can't log in and are hidden from lists; their records are kept. */
+    public function archive(int $id)
     {
         $user = $this->student($id);
         if (! $user) {
             return redirect()->to('/members')->with('error', 'Student not found.');
         }
-        $hasHistory = (new BorrowingModel())->where('user_id', $id)->countAllResults() > 0
-            || (new CreditLogModel())->where('user_id', $id)->countAllResults() > 0;
-        if ($hasHistory) {
-            return redirect()->back()->with('error', $user['name'] . ' has borrowing or credit records, so the account can\'t be deleted. Suspend it instead.');
+        if ((new BorrowingModel())->where('user_id', $id)->where('status', 'borrowed')->countAllResults() > 0) {
+            return redirect()->back()->with('error', $user['name'] . ' still has books on loan. Archive the account once they are returned.');
         }
 
-        $this->users->delete($id);
-        log_activity('user', 'deleted', 'Deleted student account ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
+        $this->users->delete($id);   // soft delete: sets archived_at
+        log_activity('user', 'archived', 'Archived student account ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
 
-        return redirect()->to('/members')->with('success', 'Student account deleted.');
+        return redirect()->to('/members')->with('success', $user['name'] . '\'s account was archived. You can restore it from the Archive page.');
     }
 
     private function student(int $id): ?array

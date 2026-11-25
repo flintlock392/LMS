@@ -37,6 +37,10 @@ class UserModel extends Model
     ];
     protected $useTimestamps = true;
 
+    // "Archive" instead of delete: archived rows get archived_at and are left out of every query.
+    protected $useSoftDeletes = true;
+    protected $deletedField   = 'archived_at';
+
     protected $beforeInsert = ['hashPassword'];
     protected $beforeUpdate = ['hashPassword'];
 
@@ -90,7 +94,8 @@ class UserModel extends Model
             $this->where('status', $status);
         }
 
-        return $this->orderBy('name', 'ASC');
+        // Suspended accounts first so they are easy to spot, then A–Z.
+        return $this->orderBy("(status = 'suspended')", 'DESC', false)->orderBy('name', 'ASC');
     }
 
     /** Active students for the circulation drop-downs. */

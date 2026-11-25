@@ -33,8 +33,8 @@
                             <td><?= (int) $c['copies'] ?></td>
                             <td class="actions">
                                 <button class="btn btn-sm btn-outline-nook" type="button" data-bs-toggle="collapse" data-bs-target="#edit-<?= $c['id'] ?>"><i class="bi bi-pencil"></i></button>
-                                <form class="d-inline" method="post" action="<?= site_url('categories/' . $c['id'] . '/delete') ?>" data-confirm="Delete category &quot;<?= esc($c['name']) ?>&quot;? Its books will become uncategorized.">
-                                    <?= csrf_field() ?><button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                <form class="d-inline" method="post" action="<?= site_url('categories/' . $c['id'] . '/archive') ?>" data-confirm="Archive category &quot;<?= esc($c['name']) ?>&quot;? Its books will show as uncategorized until you restore it.">
+                                    <?= csrf_field() ?><button class="btn btn-sm btn-outline-nook" title="Archive" aria-label="Archive"><i class="bi bi-archive"></i></button>
                                 </form>
                             </td>
                         </tr>

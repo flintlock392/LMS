@@ -13,7 +13,7 @@ use CodeIgniter\HTTP\ResponseInterface;
  *   'filter' => 'role'                            -> any logged-in user
  *   'filter' => 'role:head_librarian,librarian'   -> only those user levels
  *
- * The account is re-checked on every request, so suspending or deleting a
+ * The account is re-checked on every request, so suspending or archiving a
  * user (or changing their level) takes effect immediately.
  */
 class RoleFilter implements FilterInterface

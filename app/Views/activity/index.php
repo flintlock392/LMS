@@ -75,7 +75,7 @@ $quick = [
             <?= $filters['q'] !== '' ? ' matching "' . esc($filters['q']) . '"' : '' ?>
         </span>
         <?php if ($filters['category'] !== '' || $filters['user_id'] !== '' || $filters['q'] !== ''): ?>
-            <a href="<?= site_url('activity?from=' . $filters['from'] . '&to=' . $filters['to']) ?>">Clear filters</a>
+            <a class="btn-clear" href="<?= site_url('activity?from=' . $filters['from'] . '&to=' . $filters['to']) ?>"><i class="bi bi-x-circle"></i>Clear filters</a>
         <?php endif; ?>
     </div>
 

@@ -23,6 +23,10 @@ class BookModel extends Model
     ];
     protected $useTimestamps = true;
 
+    // "Archive" instead of delete: archived rows get archived_at and are left out of every query.
+    protected $useSoftDeletes = true;
+    protected $deletedField   = 'archived_at';
+
     public static function availableSql(): string
     {
         return '(books.stock_count - ' . self::SQL_ON_LOAN . ')';
@@ -34,7 +38,7 @@ class BookModel extends Model
         $this->select('books.*, categories.name AS category_name', false)
             ->select(self::SQL_ON_LOAN . ' AS on_loan', false)
             ->select(self::availableSql() . ' AS available', false)
-            ->join('categories', 'categories.id = books.category_id', 'left');
+            ->join('categories', 'categories.id = books.category_id AND categories.archived_at IS NULL', 'left');
 
         return $this;
     }
@@ -117,7 +121,7 @@ class BookModel extends Model
     public function distinctAuthors(): array
     {
         return array_column(
-            $this->db->table($this->table)->select('author')->distinct()->orderBy('author', 'ASC')->get()->getResultArray(),
+            $this->db->table($this->table)->select('author')->where('archived_at', null)->distinct()->orderBy('author', 'ASC')->get()->getResultArray(),
             'author'
         );
     }
@@ -140,7 +144,7 @@ class BookModel extends Model
                     COALESCE(SUM(' . self::SQL_ON_LOAN . '), 0) AS on_loan,
                     SUM(CASE WHEN ' . self::availableSql() . ' <= 0 THEN 1 ELSE 0 END) AS unavailable,
                     SUM(CASE WHEN ' . self::availableSql() . ' > 0 AND ' . self::availableSql() . ' <= ' . self::LOW_STOCK . ' THEN 1 ELSE 0 END) AS low
-             FROM books'
+             FROM books WHERE archived_at IS NULL'
         )->getRowArray();
 
         return [

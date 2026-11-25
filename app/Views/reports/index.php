@@ -1,13 +1,26 @@
 <?= $this->extend('layouts/app') ?>
 <?= $this->section('title') ?><?= esc(module_title('reports')) ?><?= $this->endSection() ?>
 
-<?php $qs = '?from=' . $from . '&to=' . $to; ?>
+<?php
+$qs      = '?' . http_build_query(array_filter(['from' => $from, 'to' => $to]));
+$dmy     = static fn (string $d) => date('j F Y', strtotime($d));   // e.g. 14 November 2026
+$period  = match (true) {
+    $from === '' && $to === '' => 'All records',
+    $from === ''                => 'All records up to ' . $dmy($to),
+    $to === ''                  => $dmy($from) . ' to today',
+    $from === $to              => $dmy($from),
+    default                     => $dmy($from) . ' – ' . $dmy($to),
+};
+?>
 <?= $this->section('content') ?>
 <div class="panel mb-4 no-print">
-    <form class="d-flex flex-wrap gap-2 align-items-end" method="get">
-        <div><label class="form-label small mb-1" for="from">From</label><input class="form-control form-control-sm" type="date" id="from" name="from" value="<?= esc($from) ?>"></div>
-        <div><label class="form-label small mb-1" for="to">To</label><input class="form-control form-control-sm" type="date" id="to" name="to" value="<?= esc($to) ?>"></div>
-        <button class="btn btn-sm btn-nook">Update</button>
+    <form class="d-flex flex-wrap gap-2 align-items-end" method="get" data-filter-form>
+        <div><label class="form-label small mb-1" for="from">From:</label><input class="form-control form-control-sm" type="date" id="from" name="from" value="<?= esc($from) ?>" max="<?= date('Y-m-d') ?>"></div>
+        <div><label class="form-label small mb-1" for="to">To:</label><input class="form-control form-control-sm" type="date" id="to" name="to" value="<?= esc($to) ?>" max="<?= date('Y-m-d') ?>"></div>
+        <button class="btn btn-sm btn-nook" data-apply>Update</button>
+        <?php if ($from !== '' || $to !== ''): ?>
+            <a class="btn-clear align-self-end" href="<?= site_url('reports') ?>" title="Show all records again"><i class="bi bi-x-circle"></i>Clear filters</a>
+        <?php endif; ?>
         <div class="btn-group btn-group-sm ms-1" role="group" aria-label="Quick ranges">
             <a class="btn btn-outline-nook" href="?from=<?= date('Y-m-d') ?>&to=<?= date('Y-m-d') ?>">Today</a>
             <a class="btn btn-outline-nook" href="?from=<?= date('Y-m-d', strtotime('-6 days')) ?>&to=<?= date('Y-m-d') ?>">7 days</a>
@@ -30,7 +43,7 @@
     </form>
 </div>
 
-<h2 class="h6 text-muted mb-3"><?= esc(setting('library_name')) ?> · <?= fmt_date($from) ?> – <?= fmt_date($to) ?></h2>
+<h2 class="h6 text-muted mb-3"><?= esc(setting('library_name')) ?> · <?= esc($period) ?></h2>
 <div class="row g-3 mb-4">
     <?php foreach ([
         ['Books issued', $summary['issued'], 'journal-arrow-up', 'blue'],
@@ -154,7 +167,7 @@
                     <thead><tr><th>Student</th><th>Book</th><th>Due</th><th class="text-end">Days late</th></tr></thead>
                     <tbody><?php foreach ($overdue as $l): ?>
                         <tr><td><?= esc($l['borrower_name']) ?><div class="sub"><?= esc($l['borrower_id_number']) ?></div></td><td><?= esc($l['title']) ?></td>
-                            <td><?= fmt_date($l['due_date']) ?></td><td class="text-end"><?= (int) floor((strtotime(date('Y-m-d')) - strtotime($l['due_date'])) / 86400) ?></td></tr>
+                            <td><?= $dmy($l['due_date']) ?></td><td class="text-end"><?= (int) floor((strtotime(date('Y-m-d')) - strtotime($l['due_date'])) / 86400) ?></td></tr>
                     <?php endforeach; ?></tbody>
                 </table></div>
             <?php endif; ?>

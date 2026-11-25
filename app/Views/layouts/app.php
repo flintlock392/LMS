@@ -25,10 +25,13 @@ $roleIcon = ['head_librarian' => 'award', 'librarian' => 'person-badge', 'studen
 <body class="app-body"<?= is_staff() ? ' data-suggest-url="' . site_url('suggest') . '"' : '' ?>>
 <div class="app-shell">
     <aside class="sidebar" id="sidebar" aria-label="Main menu">
-        <a class="brand" href="<?= site_url('dashboard') ?>" title="<?= esc(setting('library_name')) ?>">
-            <img src="<?= brand_image('logo') ?>" alt="">
-            <span><strong><?= esc(setting('library_name')) ?></strong><small>Library System</small></span>
-        </a>
+        <div class="sidebar-head">
+            <a class="brand" href="<?= site_url('dashboard') ?>" title="<?= esc(setting('library_name')) ?>">
+                <img src="<?= brand_image('logo') ?>" alt="">
+                <span><strong><?= esc(setting('library_name')) ?></strong><small>Library System</small></span>
+            </a>
+            <button class="sidebar-toggle" type="button" id="sidebarToggle" aria-controls="sidebar" aria-label="Collapse menu" title="Show or hide the menu"><i class="bi bi-list"></i></button>
+        </div>
         <span class="role-chip" title="<?= esc(role_label($role)) ?>"><i class="bi bi-<?= $roleIcon ?>"></i><span><?= esc(role_label($role)) ?></span></span>
         <nav>
             <?php foreach (nav_items($role) as $item): [$label, $icon, $target] = $item; ?>
@@ -52,7 +55,8 @@ $roleIcon = ['head_librarian' => 'award', 'librarian' => 'person-badge', 'studen
 
     <div class="app-main">
         <header class="topbar">
-            <button class="sidebar-toggle" type="button" id="sidebarToggle" aria-controls="sidebar" aria-label="Collapse menu" title="Show or hide the menu"><i class="bi bi-list"></i></button>
+            <!-- Phones only: the sidebar is hidden there, so this opens it -->
+            <button class="sidebar-toggle sidebar-open-mobile" type="button" id="sidebarOpen" aria-controls="sidebar" aria-label="Open menu"><i class="bi bi-list"></i></button>
             <h1><?= $this->renderSection('title') ?></h1>
             <div class="user">
                 <div class="text-end d-none d-sm-block lh-sm">
@@ -130,7 +134,8 @@ $roleIcon = ['head_librarian' => 'award', 'librarian' => 'person-badge', 'studen
         const wide = window.matchMedia('(min-width: 992px)');
         const label = () => btn.setAttribute('aria-label', wide.matches
             ? (root.classList.contains('sidebar-collapsed') ? 'Expand menu' : 'Collapse menu')
-            : (sb.classList.contains('open') ? 'Close menu' : 'Open menu'));
+            : 'Close menu');
+        document.getElementById('sidebarOpen').addEventListener('click', () => sb.classList.add('open'));
         btn.addEventListener('click', function () {
             if (wide.matches) {
                 const collapsed = root.classList.toggle('sidebar-collapsed');
@@ -149,6 +154,7 @@ $roleIcon = ['head_librarian' => 'award', 'librarian' => 'person-badge', 'studen
     });
 </script>
 <script src="<?= asset('assets/js/suggest.js') ?>" defer></script>
+<script src="<?= asset('assets/js/filters.js') ?>" defer></script>
 <?= $this->renderSection('scripts') ?>
 </body>
 </html>

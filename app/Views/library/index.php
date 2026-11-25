@@ -27,6 +27,7 @@ $isBookTab = $tab === 'collections';
 <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
     <?php if (is_head()): ?>
         <a class="btn btn-outline-nook" href="<?= site_url('activity') ?>"><i class="bi bi-clock-history me-1"></i>Activity Log</a>
+        <?php if (is_head()): ?><a class="btn btn-outline-nook" href="<?= site_url('archive') ?>"><i class="bi bi-archive me-1"></i>Archive</a><?php endif; ?>
         <button class="btn btn-outline-nook" type="button" data-bs-toggle="modal" data-bs-target="#stockModal"><i class="bi bi-arrow-repeat me-1"></i>Update Stock</button>
     <?php endif; ?>
     <button class="btn btn-outline-nook" type="button" data-bs-toggle="modal" data-bs-target="#issueModal"><i class="bi bi-box-arrow-up-right me-1"></i>Issue book</button>
@@ -43,7 +44,7 @@ $isBookTab = $tab === 'collections';
     </nav>
 
     <!-- Search + date range -->
-    <form class="date-range mb-2" method="get" data-range-form>
+    <form class="date-range mb-2" method="get" data-range-form data-filter-form>
         <input type="hidden" name="tab" value="<?= esc($tab) ?>">
         <div class="field">
             <label for="q">Search</label>
@@ -52,7 +53,7 @@ $isBookTab = $tab === 'collections';
         </div>
             <div class="field">
                 <label for="category_id">Category</label>
-                <select class="form-select form-select-sm" id="category_id" name="category_id" onchange="this.form.submit()">
+                <select class="form-select form-select-sm" id="category_id" name="category_id">
                     <option value="">All categories</option>
                     <?php foreach ($categories as $c): ?>
                         <option value="<?= $c['id'] ?>" <?= $category === (string) $c['id'] ? 'selected' : '' ?>><?= esc($c['name']) ?></option>
@@ -61,7 +62,7 @@ $isBookTab = $tab === 'collections';
             </div>
             <div class="field">
                 <label for="course">Course</label>
-                <select class="form-select form-select-sm course-filter" id="course" name="course" onchange="this.form.submit()">
+                <select class="form-select form-select-sm course-filter" id="course" name="course">
                     <option value="">All courses</option>
                     <?php foreach ($courses as $c): ?>
                         <option value="<?= esc($c) ?>" <?= $course === $c ? 'selected' : '' ?>><?= esc($c) ?></option>
@@ -78,9 +79,9 @@ $isBookTab = $tab === 'collections';
             <label for="to">End date</label>
             <input class="form-control form-control-sm" type="date" id="to" name="to" value="<?= esc($to) ?>" max="<?= date('Y-m-d') ?>" aria-describedby="range-help">
         </div>
-        <button class="btn btn-sm btn-nook"><i class="bi bi-funnel me-1"></i>Apply</button>
+        <button class="btn btn-sm btn-nook" data-apply><i class="bi bi-funnel me-1"></i>Apply</button>
         <?php if ($q !== '' || $from !== '' || $to !== '' || $category !== '' || $course !== ''): ?>
-            <a class="btn btn-sm btn-link" href="<?= site_url('library?tab=' . $tab) ?>">Clear</a>
+            <a class="btn-clear" href="<?= site_url('library?tab=' . $tab) ?>"><i class="bi bi-x-circle"></i>Clear filters</a>
         <?php endif; ?>
     </form>
     <p id="range-help" class="form-text mt-0 mb-3">
@@ -214,8 +215,8 @@ $isBookTab = $tab === 'collections';
                             <a class="btn btn-sm btn-outline-nook" href="<?= site_url('books/' . $b['id']) ?>" title="View"><i class="bi bi-eye"></i></a>
                             <a class="btn btn-sm btn-outline-nook" href="<?= site_url('books/' . $b['id'] . '/edit') ?>" title="Edit"><i class="bi bi-pencil"></i></a>
                             <?php if (is_head()): ?>
-                                <form class="d-inline" method="post" action="<?= site_url('books/' . $b['id'] . '/delete') ?>" data-confirm="Delete &quot;<?= esc($b['title']) ?>&quot;? This cannot be undone.">
-                                    <?= csrf_field() ?><button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+                                <form class="d-inline" method="post" action="<?= site_url('books/' . $b['id'] . '/archive') ?>" data-confirm="Archive &quot;<?= esc($b['title']) ?>&quot;? It will be hidden from the library. You can restore it from the Archive page.">
+                                    <?= csrf_field() ?><button class="btn btn-sm btn-outline-nook" title="Archive" aria-label="Archive"><i class="bi bi-archive"></i></button>
                                 </form>
                             <?php endif; ?>
                         </td>
