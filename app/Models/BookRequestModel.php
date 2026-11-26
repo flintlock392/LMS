@@ -57,6 +57,12 @@ class BookRequestModel extends Model
         return $this->where('status', 'pending')->countAllResults();
     }
 
+    /** How many different students have at least one request waiting. */
+    public function pendingStudentCount(): int
+    {
+        return (int) ($this->db->table($this->table)->select('COUNT(DISTINCT user_id) AS n')->where('status', 'pending')->get()->getRow()->n ?? 0);
+    }
+
     /** A student's pending requests, keyed for the catalog: [book_id => ['borrow' => id, 'return' => id]]. */
     public function pendingMapFor(int $userId): array
     {

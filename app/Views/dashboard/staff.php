@@ -7,7 +7,7 @@
 <?php if ($requests > 0): ?>
     <div class="alert alert-warning d-flex align-items-center gap-2">
         <i class="bi bi-bell"></i>
-        <span><strong><?= $requests ?></strong> student request<?= $requests === 1 ? ' is' : 's are' ?> waiting for approval.</span>
+        <span><strong><?= $requestStudents ?></strong> student<?= $requestStudents === 1 ? ' is' : 's are' ?> waiting for approval <span class="text-muted">(<?= $requests ?> book<?= $requests === 1 ? '' : 's' ?> requested)</span>.</span>
         <a class="btn btn-sm btn-nook ms-auto" href="<?= site_url('library?tab=requested') ?>">Review requests</a>
     </div>
 <?php endif; ?>

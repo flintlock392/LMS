@@ -32,6 +32,7 @@ class Dashboard extends BaseController
             'bookStats'  => $books->stats(),
             'loans'      => $borrowings->counts(),
             'requests'   => (new \App\Models\BookRequestModel())->pendingCount(),
+            'requestStudents' => (new \App\Models\BookRequestModel())->pendingStudentCount(),   // the banner counts students, not books
             'appeals'    => (new CreditAppealModel())->pendingCount(),
             'blocked'    => (new UserModel())->where('role', UserModel::STUDENT)->where('credits >=', CreditPolicy::MAX)->countAllResults(),
             'restricted' => (new UserModel())->where('role', UserModel::STUDENT)->where('credits >=', CreditPolicy::TIERS[1][0])->countAllResults(),

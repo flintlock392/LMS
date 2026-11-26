@@ -22,6 +22,9 @@ use App\Models\UserModel;
  */
 class Library extends BaseController
 {
+    /** Rows per page on every Library tab; the rest continue on the next page. */
+    public const PER_PAGE = 10;
+
     public const TABS = ['all', 'requested', 'collections', 'borrowed', 'overdue', 'returned', 'lost'];
 
     /** What the date range filters on, per tab (shown to the user). */
@@ -72,7 +75,7 @@ class Library extends BaseController
             $model = new BookRequestModel();
             $rows  = $model->pendingFiltered([
                 'q' => $q, 'from' => $from, 'to' => $to, 'course' => $data['course'], 'category_id' => $data['category'],
-            ])->paginate(15);
+            ])->paginate(self::PER_PAGE);
             foreach ($rows as &$r) {
                 [$r['days_late'], $r['est_credits']] = $r['type'] === 'return' && $r['due_date']
                     ? $service->overdueCredits($r['due_date'], date('Y-m-d')) : [0, 0];
@@ -91,13 +94,13 @@ class Library extends BaseController
                 'added_to'    => $to,
                 'sort'        => 'available',
                 'dir'         => 'asc',
-            ])->paginate(15);
+            ])->paginate(self::PER_PAGE);
             $data['pager'] = $model->pager;
             $data['stats'] = (new BookModel())->stats();
         } else {
             $status = ['all' => 'all', 'borrowed' => 'active', 'overdue' => 'overdue', 'returned' => 'returned', 'lost' => 'lost'][$tab];
             $model  = new BorrowingModel();
-            $rows   = $model->filtered(['status' => $status, 'q' => $q, 'from' => $from, 'to' => $to, 'course' => $data['course'], 'category_id' => $data['category']])->paginate(15);
+            $rows   = $model->filtered(['status' => $status, 'q' => $q, 'from' => $from, 'to' => $to, 'course' => $data['course'], 'category_id' => $data['category']])->paginate(self::PER_PAGE);
             foreach ($rows as &$r) {
                 [$r['days_late'], $r['est_credits']] = $r['status'] === 'borrowed' ? $service->overdueCredits($r['due_date'], date('Y-m-d')) : [0, 0];
             }
@@ -129,7 +132,7 @@ class Library extends BaseController
         $data['activityTotal'] = 0;
         if (is_head() && $from !== '' && $to !== '') {
             $act                   = new ActivityLogModel();
-            $data['activity']      = $act->between(['from' => $from, 'to' => $to])->paginate(10, 'activity');
+            $data['activity']      = $act->between(['from' => $from, 'to' => $to])->paginate(self::PER_PAGE, 'activity');
             $data['activityPager'] = $act->pager;
             $data['activityTotal'] = $act->pager->getTotal('activity');
         }
