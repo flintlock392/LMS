@@ -12,12 +12,12 @@ use App\Models\UserModel;
  */
 class Archive extends BaseController
 {
-    /** type => [table, label, activity category] */
+    /** type => [table, label] (archiving and restoring are logged under the "Archive" area) */
     private const TYPES = [
-        'book'     => ['books', 'Book', 'book'],
-        'category' => ['categories', 'Category', 'book'],
-        'student'  => ['users', 'Student account', 'user'],
-        'staff'    => ['users', 'Staff account', 'staff'],
+        'book'     => ['books', 'Book'],
+        'category' => ['categories', 'Category'],
+        'student'  => ['users', 'Student account'],
+        'staff'    => ['users', 'Staff account'],
     ];
 
     public function index()
@@ -37,7 +37,7 @@ class Archive extends BaseController
         if (! isset(self::TYPES[$type])) {
             return redirect()->to('/archive')->with('error', 'Unknown item type.');
         }
-        [$table, $label, $logCategory] = self::TYPES[$type];
+        [$table, $label] = self::TYPES[$type];
 
         $builder = db_connect()->table($table)->where('id', $id)->where('archived_at IS NOT NULL', null, false);
         if ($table === 'users') {
@@ -50,7 +50,7 @@ class Archive extends BaseController
 
         $builder->update(['archived_at' => null]);
         $name = $row['title'] ?? $row['name'];
-        log_activity($logCategory, 'restored', 'Restored ' . strtolower($label) . ' "' . $name . '" from the archive', $table === 'users' ? 'user' : $type, $id);
+        log_activity('archive', 'restored', 'Restored ' . strtolower($label) . ' "' . $name . '" from the archive', $table === 'users' ? 'user' : $type, $id);
 
         return redirect()->to('/archive')->with('success', $label . ' "' . $name . '" was restored.');
     }

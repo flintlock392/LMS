@@ -81,7 +81,7 @@ class Circulation
         $tier    = CreditPolicy::tier($credits);
         if (CreditPolicy::isBlocked($credits)) {
             throw new RuntimeException($who . ($forRequest ? ' are' : ' is') . ' blocked from borrowing (' . $credits . ' credits). '
-                . ($forRequest ? 'Please appeal to the Head Librarian from My Credits.' : 'The Head Librarian must settle the student\'s status first.'));
+                . ($forRequest ? 'Please appeal to the librarians from My Credits.' : 'A librarian must settle the student\'s status first.'));
         }
         $maxLoans = CreditPolicy::maxBooks($credits, (int) $this->settings->value('max_loans'));
         $count    = $this->borrowings->activeCountForUser($userId);
@@ -429,7 +429,7 @@ class Circulation
         return $after;
     }
 
-    /** Student asks the Head Librarian to restore credits. Returns the appeal id. */
+    /** Student asks the librarians to restore credits. Returns the appeal id. */
     public function submitAppeal(int $userId, string $type, string $message, ?float $hours = null): int
     {
         $user = $this->users->find($userId);
@@ -441,7 +441,7 @@ class Circulation
         }
         $appeals = new \App\Models\CreditAppealModel();
         if ($appeals->where('user_id', $userId)->where('status', 'pending')->countAllResults() > 0) {
-            throw new RuntimeException('You already have an appeal waiting. The Head Librarian will review it soon.');
+            throw new RuntimeException('You already have an appeal waiting. A librarian will review it soon.');
         }
 
         $id = (int) $appeals->insert([
@@ -457,7 +457,7 @@ class Circulation
         return $id;
     }
 
-    /** Head Librarian approves an appeal, restoring $reduceBy credits to the student (stored as reduced_by). */
+    /** A librarian approves an appeal, restoring $reduceBy credits to the student (stored as reduced_by). */
     public function approveAppeal(int $appealId, int $staffId, int $reduceBy, string $response = ''): int
     {
         $appeals = new \App\Models\CreditAppealModel();

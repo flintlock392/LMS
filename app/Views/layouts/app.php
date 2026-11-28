@@ -33,14 +33,30 @@ $roleIcon = ['head_librarian' => 'award', 'librarian' => 'person-badge', 'studen
             <button class="sidebar-toggle" type="button" id="sidebarToggle" aria-controls="sidebar" aria-label="Collapse menu" title="Show or hide the menu"><i class="bi bi-list"></i></button>
         </div>
         <span class="role-chip" title="<?= esc(role_label($role)) ?>"><i class="bi bi-<?= $roleIcon ?>"></i><span><?= esc(role_label($role)) ?></span></span>
+        <?php
+        // Waiting work for staff, shown as a count on the sidebar item:
+        // Library = students' borrow / return requests, Credit Management = credit appeals.
+        $navCounts = [];
+        if (is_staff()) {
+            $navCounts['library'] = [(new \App\Models\BookRequestModel())->pendingCount(), 'waiting borrow or return request'];
+            $navCounts['credits'] = [(new \App\Models\CreditAppealModel())->pendingCount(), 'waiting credit appeal'];
+        } elseif ($role === \App\Models\UserModel::STUDENT) {
+            // Student: things that need their attention (cleared when they open the page).
+            $navCounts = student_nav_counts((int) session()->get('userId'));
+        }
+        ?>
         <nav>
             <?php foreach (nav_items($role) as $item): [$label, $icon, $target] = $item; ?>
                 <?php $isActive = false;
                 foreach (array_merge([$target], $item[3] ?? []) as $p) {
                     $isActive = $isActive || $path === $p || str_starts_with($path, $p . '/');
                 } ?>
-                <a class="nav-item-link<?= $isActive ? ' active' : '' ?>" href="<?= site_url($target) ?>" title="<?= esc($label) ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
+                <?php [$n, $what] = $navCounts[$target] ?? [0, ''];
+                $note = $n > 0 ? $n . ' ' . $what . ($n === 1 ? '' : 's') : ''; ?>
+                <a class="nav-item-link<?= $isActive ? ' active' : '' ?>" href="<?= site_url($target === 'library' && $n > 0 ? 'library?tab=requested' : ($target === 'credits' && $n > 0 ? 'credits?tab=appeals' : $target)) ?>"
+                   title="<?= esc($label . ($note ? ' · ' . $note : '')) ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
                     <i class="bi bi-<?= $icon ?>"></i><span><?= esc($label) ?></span>
+                    <?php if ($n > 0): ?><b class="nav-badge" aria-label="<?= esc($note) ?>"><?= $n > 99 ? '99+' : $n ?></b><?php endif; ?>
                 </a>
             <?php endforeach; ?>
         </nav>
@@ -155,6 +171,7 @@ $roleIcon = ['head_librarian' => 'award', 'librarian' => 'person-badge', 'studen
 </script>
 <script src="<?= asset('assets/js/suggest.js') ?>" defer></script>
 <script src="<?= asset('assets/js/filters.js') ?>" defer></script>
+<script src="<?= asset('assets/js/password.js') ?>" defer></script>
 <?= $this->renderSection('scripts') ?>
 </body>
 </html>

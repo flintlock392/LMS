@@ -37,7 +37,7 @@ class Account extends BaseController
     {
         $rules = [
             'current'  => 'required',
-            'password' => 'required|min_length[8]|max_length[72]',
+            'password' => password_rule(),
             'confirm'  => ['rules' => 'required|matches[password]', 'errors' => ['matches' => 'The new passwords do not match.']],
         ];
         if (! $this->validate($rules)) {

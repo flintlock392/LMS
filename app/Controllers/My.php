@@ -29,6 +29,7 @@ class My extends BaseController
 
     public function loans()
     {
+        mark_seen('loans_seen_at');   // clears the sidebar count for answered requests
         $circ  = new CirculationService();
         $model = new BorrowingModel();
         // Status filter: all | active (on loan) | due_today | overdue | returned
@@ -36,7 +37,7 @@ class My extends BaseController
         if (! array_key_exists($status, self::LOAN_FILTERS)) {
             $status = 'all';
         }
-        $rows = $model->filtered(['status' => $status, 'user_id' => $this->me()])->paginate(15);
+        $rows = $model->filtered(['status' => $status, 'user_id' => $this->me(), 'newest' => true])->paginate(15);   // most recently borrowed on top
         foreach ($rows as &$l) {
             [$l['days_late'], $l['est_credits']] = $l['status'] === 'borrowed' ? $circ->overdueCredits($l['due_date'], date('Y-m-d')) : [0, 0];
         }
@@ -102,6 +103,7 @@ class My extends BaseController
     /** My Credits: balance, standing, how to reduce credits, appeals and history. */
     public function credits()
     {
+        mark_seen('credits_seen_at');   // clears the sidebar count for answered appeals / deductions
         $user = (new UserModel())->find($this->me());
 
         return view('my/credits', [

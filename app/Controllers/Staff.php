@@ -123,7 +123,7 @@ class Staff extends BaseController
         }
 
         $this->users->delete($id);   // soft delete: sets archived_at
-        log_activity('staff', 'archived', 'Archived staff account ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
+        log_activity('archive', 'archived', 'Archived staff account ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
 
         return redirect()->to('/staff')->with('success', $user['name'] . '\'s staff account was archived. You can restore it from the Archive page.');
     }
@@ -162,7 +162,7 @@ class Staff extends BaseController
             'phone'     => 'permit_empty|max_length[30]',
             'position'  => 'permit_empty|max_length[100]',
             'role'      => 'required|in_list[' . implode(',', UserModel::STAFF_ROLES) . ']',
-            'password'  => $id === null ? 'required|min_length[8]|max_length[72]' : 'permit_empty|min_length[8]|max_length[72]',
+            'password'  => password_rule($id === null),
         ];
     }
 

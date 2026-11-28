@@ -44,17 +44,20 @@ $isBookTab = $tab === 'collections';
         <?php endforeach; ?>
     </nav>
 
-    <!-- Search + date range -->
+    <!-- Search on its own row (top left), then the filters and date range on one line -->
     <form class="date-range mb-2" method="get" data-range-form data-filter-form>
         <input type="hidden" name="tab" value="<?= esc($tab) ?>">
-        <div class="field">
+        <div class="field field-search">
             <label for="q">Search</label>
-            <input class="form-control form-control-sm search-box" type="search" id="q" name="q" value="<?= esc($q) ?>" data-suggest="<?= $isBookTab ? 'books' : 'loans' ?>"
-                   placeholder="<?= $isBookTab ? 'Title, author or ISBN' : 'Book, ISBN or student' ?>">
+            <div class="search-icon">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input class="form-control form-control-sm search-box" type="search" id="q" name="q" value="<?= esc($q) ?>" data-suggest="<?= $isBookTab ? 'books' : 'loans' ?>"
+                       placeholder="<?= $isBookTab ? 'Search by title, author or ISBN' : 'Search by book, ISBN or student' ?>">
+            </div>
         </div>
             <div class="field">
                 <label for="category_id">Category</label>
-                <select class="form-select form-select-sm" id="category_id" name="category_id">
+                <select class="form-select form-select-sm category-filter" id="category_id" name="category_id">
                     <option value="">All categories</option>
                     <?php foreach ($categories as $c): ?>
                         <option value="<?= $c['id'] ?>" <?= $category === (string) $c['id'] ? 'selected' : '' ?>><?= esc($c['name']) ?></option>
@@ -73,7 +76,7 @@ $isBookTab = $tab === 'collections';
             </div>
             <div class="field">
                 <label for="shelf">Shelf</label>
-                <select class="form-select form-select-sm" id="shelf" name="shelf">
+                <select class="form-select form-select-sm shelf-filter" id="shelf" name="shelf">
                     <option value="">All shelves</option>
                     <?php foreach ($shelves as $section => $list): ?>
                         <optgroup label="Section <?= esc($section) ?>">
@@ -87,6 +90,7 @@ $isBookTab = $tab === 'collections';
                     <?php endforeach; ?>
                 </select>
             </div>
+        <div class="date-pair">
         <div class="field">
             <label for="from">Start date</label>
             <input class="form-control form-control-sm" type="date" id="from" name="from" value="<?= esc($from) ?>" max="<?= date('Y-m-d') ?>" aria-describedby="range-help">
@@ -95,6 +99,7 @@ $isBookTab = $tab === 'collections';
         <div class="field">
             <label for="to">End date</label>
             <input class="form-control form-control-sm" type="date" id="to" name="to" value="<?= esc($to) ?>" max="<?= date('Y-m-d') ?>" aria-describedby="range-help">
+        </div>
         </div>
         <button class="btn btn-sm btn-nook" data-apply><i class="bi bi-funnel me-1"></i>Apply</button>
         <?php if ($q !== '' || $from !== '' || $to !== '' || $category !== '' || $course !== '' || $shelf !== ''): ?>
@@ -121,7 +126,37 @@ $isBookTab = $tab === 'collections';
             <div class="table-responsive"><table class="table table-nook">
                 <thead><tr><th>Request</th><th>Book</th><th>Student</th><th>Details</th><th class="text-end">Actions</th></tr></thead>
                 <tbody>
-                <?php foreach ($rows as $r): $isBorrow = $r['type'] === 'borrow'; ?>
+                <?php $shownGroup = [];
+                foreach ($rows as $r): $isBorrow = $r['type'] === 'borrow';
+                    $uid = (int) $r['user_id'];
+                    if (isset($studentRequests[$uid])):
+                        // A student with several requests: one row and a "View requests" pop-up.
+                        if (isset($shownGroup[$uid])) { continue; }
+                        $shownGroup[$uid] = true;
+                        $list    = $studentRequests[$uid];
+                        $borrows = count(array_filter($list, static fn ($x) => $x['type'] === 'borrow'));
+                        $returns = count($list) - $borrows;
+                        $info    = $studentInfo[$uid] ?? null; ?>
+                    <tr class="request-group">
+                        <td><span class="pill pill-info"><i class="bi bi-stack me-1"></i><?= count($list) ?> requests</span>
+                            <div class="sub mt-1">Since <?= fmt_date($list[0]['created_at'], true) ?></div></td>
+                        <td><div class="book-cell">
+                                <span class="cover-stack"><?php foreach (array_slice($list, 0, 3) as $x): ?><?= book_cover($x, 'cover-sm', 'S') ?><?php endforeach; ?></span>
+                                <div class="min-w-0"><div class="text-truncate-2"><?= esc(implode(', ', array_map(static fn ($x) => $x['title'], array_slice($list, 0, 2)))) ?><?= count($list) > 2 ? ' and ' . (count($list) - 2) . ' more' : '' ?></div>
+                                    <div class="sub"><?= implode(' · ', array_filter([$borrows ? $borrows . ' to borrow' : '', $returns ? $returns . ' to return' : ''])) ?></div></div>
+                            </div></td>
+                        <td><a class="text-reset" href="<?= site_url('members/' . $uid) ?>"><?= esc($r['borrower_name']) ?></a>
+                            <div class="sub"><?= esc($r['borrower_id_number']) ?><?= $r['student_course'] ? ' · ' . esc($r['student_course']) : '' ?></div></td>
+                        <td><?php if ($info): ?>
+                                <?= credit_badge((int) $info['credits']) ?>
+                                <div class="sub"><?= $info['on_loan'] ?> of <?= $info['limit'] ?> on loan · can take <?= max(0, $info['limit'] - $info['on_loan']) ?> more</div>
+                            <?php endif; ?></td>
+                        <td class="actions">
+                            <button class="btn btn-sm btn-nook" type="button" data-bs-toggle="modal" data-bs-target="#reqModal-<?= $uid ?>">
+                                <i class="bi bi-list-check me-1"></i>View requests (<?= count($list) ?>)</button>
+                        </td>
+                    </tr>
+                    <?php continue; endif; ?>
                     <tr>
                         <td><span class="pill <?= $isBorrow ? 'pill-info' : 'pill-warning' ?>"><i class="bi bi-<?= $isBorrow ? 'bookmark-plus' : 'box-arrow-in-down-left' ?> me-1"></i><?= $isBorrow ? 'Borrow' : 'Return' ?></span>
                             <div class="sub mt-1"><?= fmt_date($r['created_at'], true) ?></div></td>
@@ -167,6 +202,7 @@ $isBookTab = $tab === 'collections';
                 </tbody>
             </table></div>
             <?= $pager->links('default', 'nook') ?>
+            <?= view('library/_student_requests', ['studentRequests' => $studentRequests, 'studentInfo' => $studentInfo]) ?>
         <?php endif; ?>
 
     <?php elseif ($isLoanTab): ?>
@@ -231,7 +267,12 @@ $isBookTab = $tab === 'collections';
                         <td class="actions">
                             <a class="btn btn-sm btn-outline-nook" href="<?= site_url('books/' . $b['id']) ?>" title="View"><i class="bi bi-eye"></i></a>
                             <a class="btn btn-sm btn-outline-nook" href="<?= site_url('books/' . $b['id'] . '/edit') ?>" title="Edit"><i class="bi bi-pencil"></i></a>
-                            <?php if (is_head()): ?>
+                            <?php if (is_head() && (int) $b['on_loan'] > 0): $n = (int) $b['on_loan']; ?>
+                                <!-- Can't archive while copies are out: say why instead of failing after the click -->
+                                <span class="d-inline-block" tabindex="0" title="Can't archive yet: <?= $n ?> cop<?= $n === 1 ? 'y is' : 'ies are' ?> on loan. Archive it once <?= $n === 1 ? 'it is' : 'they are' ?> returned.">
+                                    <button class="btn btn-sm btn-outline-nook" disabled aria-label="Archive (not available: copies on loan)"><i class="bi bi-archive"></i></button>
+                                </span>
+                            <?php elseif (is_head()): ?>
                                 <form class="d-inline" method="post" action="<?= site_url('books/' . $b['id'] . '/archive') ?>" data-confirm="Archive &quot;<?= esc($b['title']) ?>&quot;? It will be hidden from the library. You can restore it from the Archive page.">
                                     <?= csrf_field() ?><button class="btn btn-sm btn-outline-nook" title="Archive" aria-label="Archive"><i class="bi bi-archive"></i></button>
                                 </form>
@@ -264,19 +305,36 @@ $isBookTab = $tab === 'collections';
 <?php if (is_staff()): ?>
 <!-- Update Stock → Adjust copies -->
 <div class="modal fade" id="stockModal" tabindex="-1" aria-labelledby="stockTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px"><div class="modal-content adjust-modal">
-        <form method="post" action="<?= site_url('inventory/adjust') ?>">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 520px"><div class="modal-content adjust-modal">
+        <form method="post" action="<?= site_url('inventory/adjust') ?>" id="stockForm">
             <?= csrf_field() ?>
             <div class="modal-header border-0 pb-0">
                 <h2 class="modal-title panel-title mb-0" id="stockTitle"><i class="bi bi-sliders"></i> Adjust copies</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3"><label class="form-label" for="book_id_s">Title</label>
-                    <select class="form-select" id="book_id_s" name="book_id" required>
-                        <option value="">Choose…</option>
-                        <?php foreach ($allBooks as $b): ?><option value="<?= $b['id'] ?>" <?= (string) old('book_id') === (string) $b['id'] ? 'selected' : '' ?>><?= esc($b['title']) ?> — ISBN <?= esc($b['isbn']) ?></option><?php endforeach; ?>
-                    </select></div>
+                <fieldset class="mb-3">
+                    <legend class="form-label fs-6 mb-2">Title</legend>
+                    <div class="search-icon mb-2">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input class="form-control form-control-sm" type="search" placeholder="Title, author or ISBN" data-pick-filter="stock-books" aria-label="Search books">
+                    </div>
+                    <div class="pick-list pick-list-short" id="stock-books" role="radiogroup" aria-label="Books">
+                        <?php foreach ($allBooks as $b): $free = (int) $b['available']; $owned = (int) $b['stock_count']; ?>
+                            <label class="pick" data-search="<?= esc(strtolower($b['title'] . ' ' . $b['isbn'] . ' ' . $b['author'])) ?>">
+                                <input class="visually-hidden" type="radio" name="book_id" value="<?= $b['id'] ?>" required <?= (string) old('book_id') === (string) $b['id'] ? 'checked' : '' ?>>
+                                <?= book_cover($b, 'cover-sm', 'S') ?>
+                                <span class="pick-body">
+                                    <span class="pick-title"><?= esc($b['title']) ?></span>
+                                    <span class="pick-sub">ISBN <?= esc($b['isbn']) ?></span>
+                                    <span class="pick-meta"><?= $owned ?> cop<?= $owned === 1 ? 'y' : 'ies' ?> owned · <?= $free ?> on the shelf</span>
+                                </span>
+                                <i class="bi bi-check-circle-fill pick-check" aria-hidden="true"></i>
+                            </label>
+                        <?php endforeach; ?>
+                        <p class="pick-empty" hidden>No book matches.</p>
+                    </div>
+                </fieldset>
                 <div class="mb-3">
                     <div class="btn-group w-100" role="group" aria-label="Add or remove copies">
                         <input type="radio" class="btn-check" name="direction" id="dir-add" value="add" <?= old('direction', 'add') === 'add' ? 'checked' : '' ?>>
@@ -438,9 +496,49 @@ $oldBook  = (string) old('book_id');
 <?= view('partials/date_range_js') ?>
 <script>
     // Issue a book: search inside each list, show the chosen student and book, enable "Issue book".
+    // "View requests" pop-up: count the ticked books on the buttons; Select all.
+    document.querySelectorAll('.req-form').forEach(function (form) {
+        const room = parseInt(form.dataset.room, 10);
+        const boxes = form.querySelectorAll('input[name="ids[]"]');
+        const all = form.querySelector('[data-req-all]');
+        const approve = form.querySelector('[data-req-approve]'), decline = form.querySelector('[data-req-decline]');
+        const plural = n => n + ' book' + (n === 1 ? '' : 's');
+        function update() {
+            const ticked = [...boxes].filter(b => b.checked);
+            const borrow = ticked.filter(b => b.dataset.type === 'borrow').length;
+            approve.querySelector('[data-n-borrow]').textContent = plural(borrow);
+            decline.querySelector('[data-n-all]').textContent = plural(ticked.length);
+            approve.disabled = borrow === 0;
+            decline.disabled = ticked.length === 0;
+            approve.title = borrow > room ? 'Only ' + room + ' more allowed for this student; the extra ones will not be issued.' : '';
+            all.checked = ticked.length === boxes.length;
+            all.indeterminate = ticked.length > 0 && ticked.length < boxes.length;
+        }
+        all.addEventListener('change', () => { boxes.forEach(b => { b.checked = all.checked; }); update(); });
+        boxes.forEach(b => b.addEventListener('change', update));
+        // Enter in the reason box must not decline by accident.
+        form.querySelector('.req-reason').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); } });
+        update();
+    });
+    // Adjust copies: clicking the chosen book again unselects it; show the chosen one when opened.
     (function () {
-        const form = document.getElementById('issueForm');
+        const form = document.getElementById('stockForm');
         if (!form) { return; }
+        let wasChecked = null;
+        form.addEventListener('pointerdown', function (e) {
+            const pick = e.target.closest('.pick'), r = pick && pick.querySelector('input[type="radio"]');
+            wasChecked = r && r.checked ? r : null;
+        });
+        form.addEventListener('click', function (e) {
+            if (e.target.type === 'radio' && e.target === wasChecked) { e.target.checked = false; wasChecked = null; }
+        });
+        document.getElementById('stockModal').addEventListener('shown.bs.modal', function () {
+            const r = this.querySelector('input[name="book_id"]:checked');
+            if (r) { r.closest('.pick').scrollIntoView({ block: 'nearest' }); }
+        });
+    })();
+    (function () {
+        // Search inside any pick list (Issue a book, Adjust copies).
         document.querySelectorAll('[data-pick-filter]').forEach(function (input) {
             const list = document.getElementById(input.dataset.pickFilter);
             input.addEventListener('input', function () {
@@ -454,9 +552,15 @@ $oldBook  = (string) old('book_id');
                 list.querySelector('.pick-empty').hidden = shown > 0;
             });
         });
+        const form = document.getElementById('issueForm');
+        if (!form) { return; }
+        const emptySlot = {
+            sumStudent: document.getElementById('sumStudent').innerHTML,
+            sumBook: document.getElementById('sumBook').innerHTML,
+        };
         function slot(id, radio) {
-            if (!radio) { return; }
             const el = document.getElementById(id);
+            if (!radio) { el.innerHTML = emptySlot[id]; return; }
             el.innerHTML = radio.dataset.avatar + '<span class="summary-text"><strong></strong><small></small></span>';
             el.querySelector('strong').textContent = radio.dataset.name;
             el.querySelector('small').textContent = radio.dataset.sub;
@@ -469,6 +573,21 @@ $oldBook  = (string) old('book_id');
             document.getElementById('issueSubmit').disabled = !(s && b);
         }
         form.addEventListener('change', refresh);
+        // Clicking the chosen student or book again unselects it.
+        let wasChecked = null;
+        function remember(e) {
+            const pick = e.target.closest('.pick');
+            const r = pick && pick.querySelector('input[type="radio"]');
+            wasChecked = r && r.checked ? r : null;
+        }
+        form.addEventListener('pointerdown', remember);
+        form.addEventListener('keydown', function (e) { if (e.key === ' ') { remember(e); } });
+        form.addEventListener('click', function (e) {
+            if (e.target.type !== 'radio' || e.target !== wasChecked) { return; }
+            e.target.checked = false;
+            wasChecked = null;
+            refresh();
+        });
         refresh();
         document.getElementById('issueModal').addEventListener('shown.bs.modal', function () {
             const first = this.querySelector('[data-pick-filter]');

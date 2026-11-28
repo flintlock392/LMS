@@ -125,7 +125,7 @@ class Members extends BaseController
         }
 
         $this->users->delete($id);   // soft delete: sets archived_at
-        log_activity('user', 'archived', 'Archived student account ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
+        log_activity('archive', 'archived', 'Archived student account ' . $user['name'] . ' (' . $user['id_number'] . ')', 'user', $id);
 
         return redirect()->to('/members')->with('success', $user['name'] . '\'s account was archived. You can restore it from the Archive page.');
     }
@@ -148,7 +148,7 @@ class Members extends BaseController
             'phone'      => 'permit_empty|max_length[30]',
             ...course_rules(),           // drop-down + "Other" text box
             'year_level' => $id === null ? 'required|in_list[1st Year,2nd Year,3rd Year,4th Year,5th Year]' : 'required|max_length[20]',
-            'password'   => $id === null ? 'required|min_length[8]|max_length[72]' : 'permit_empty|min_length[8]|max_length[72]',
+            'password'   => password_rule($id === null),
         ];
     }
 

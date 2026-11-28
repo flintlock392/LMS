@@ -33,12 +33,11 @@
             <form method="post" action="<?= site_url('account/password') ?>">
                 <?= csrf_field() ?>
                 <div class="mb-3"><label class="form-label" for="current">Current password</label>
-                    <input class="form-control" type="password" id="current" name="current" autocomplete="current-password" required></div>
+                    <input class="form-control" type="password" id="current" name="current" autocomplete="current-password" required data-password-toggle></div>
                 <div class="mb-3"><label class="form-label" for="password">New password</label>
-                    <input class="form-control" type="password" id="password" name="password" minlength="8" maxlength="72" autocomplete="new-password" required>
-                    <div class="form-text">At least 8 characters.</div></div>
+                    <input class="form-control" type="password" id="password" name="password" minlength="8" maxlength="72" autocomplete="new-password" required data-password-toggle data-strength></div>
                 <div class="mb-3"><label class="form-label" for="confirm">Confirm new password</label>
-                    <input class="form-control" type="password" id="confirm" name="confirm" minlength="8" maxlength="72" autocomplete="new-password" required></div>
+                    <input class="form-control" type="password" id="confirm" name="confirm" minlength="8" maxlength="72" autocomplete="new-password" required data-password-toggle data-match="#password"></div>
                 <button class="btn btn-nook">Change password</button>
             </form>
         </div>

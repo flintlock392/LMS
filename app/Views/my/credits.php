@@ -39,7 +39,7 @@ $waiting  = array_filter($appeals, static fn ($a) => $a['status'] === 'pending')
                     <li class="<?= $t[1] === $tier['key'] ? 'fw-semibold' : '' ?>"><?= CreditPolicy::rangeLabel($i) ?>: <?= esc($t[2]) ?>. <?= esc($t[6]) ?></li>
                 <?php endforeach; ?>
             </ul>
-            <p class="mb-0"><strong>To get credits back</strong>, appeal to the Head Librarian or help out in the library, then report it below.</p>
+            <p class="mb-0"><strong>To get credits back</strong>, appeal to the librarians or help out in the library, then report it below.</p>
         </div>
     </div>
 
@@ -49,7 +49,7 @@ $waiting  = array_filter($appeals, static fn ($a) => $a['status'] === 'pending')
             <?php if ($credits >= CreditPolicy::MAX): ?>
                 <p class="text-muted mb-0">You have all <?= CreditPolicy::MAX ?> credits. Keep returning books on time!</p>
             <?php elseif ($waiting): ?>
-                <p class="mb-0"><span class="pill pill-warning">Waiting for review</span> Your appeal is with the Head Librarian. You'll see the answer below.</p>
+                <p class="mb-0"><span class="pill pill-warning">Waiting for review</span> Your appeal is with the librarians. You'll see the answer below.</p>
             <?php else: ?>
                 <form method="post" action="<?= site_url('my/credits/appeal') ?>">
                     <?= csrf_field() ?>
@@ -68,7 +68,7 @@ $waiting  = array_filter($appeals, static fn ($a) => $a['status'] === 'pending')
                         <input class="form-control" type="number" step="0.5" min="0.5" max="100" id="hours" name="hours" value="<?= esc(old('hours', '', false)) ?>" style="max-width:140px">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="message">Message to the Head Librarian</label>
+                        <label class="form-label" for="message">Message to the librarians</label>
                         <textarea class="form-control" id="message" name="message" rows="4" maxlength="2000" required
                                   placeholder="Explain what happened, or what you helped with and when."><?= esc(old('message', '', false)) ?></textarea>
                     </div>

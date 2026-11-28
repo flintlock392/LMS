@@ -42,7 +42,7 @@ class Categories extends BaseController
         }
 
         $this->categories->delete($id);   // soft delete: sets archived_at
-        log_activity('book', 'category_archived', 'Archived category "' . $category['name'] . '"', 'category', $id);
+        log_activity('archive', 'category_archived', 'Archived category "' . $category['name'] . '"', 'category', $id);
 
         return redirect()->to('/categories')->with('success', 'Category "' . $category['name'] . '" archived. Its books show as uncategorized until you restore it from the Archive page.');
     }

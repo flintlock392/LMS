@@ -82,6 +82,13 @@ class BorrowingModel extends Model
             $this->where('borrowings.borrowed_at <=', $f['to'] . ' 23:59:59');
         }
 
+        if (! empty($f['newest'])) {
+            // My Loans: books still out first, each part with the most recently borrowed on top.
+            return $this->orderBy('borrowings.status = \'borrowed\'', 'DESC', false)
+                ->orderBy('borrowings.borrowed_at', 'DESC')
+                ->orderBy('borrowings.id', 'DESC');
+        }
+
         return $this->orderBy('borrowings.status = \'borrowed\'', 'DESC', false)
             ->orderBy('borrowings.due_date', 'ASC')
             ->orderBy('borrowings.id', 'DESC');

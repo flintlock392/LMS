@@ -12,7 +12,7 @@ class ActivityLogModel extends Model
         'inventory'   => ['Inventory', 'box-seam'],
         'book'        => ['Books & categories', 'book'],
         'credit'      => ['Credits', 'shield-exclamation'],
-        'fine'        => ['Fines (old records)', 'cash-coin'],
+        'archive'     => ['Archive', 'archive'],   // archived and restored books, categories and accounts
         'user'        => ['Students', 'people'],
         'staff'       => ['Staff', 'person-badge'],
         'settings'    => ['Settings', 'gear'],

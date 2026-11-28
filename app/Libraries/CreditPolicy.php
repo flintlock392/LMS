@@ -26,7 +26,7 @@ class CreditPolicy
         [11, 'warning',   'Warning',       2,    1.0, 'warning', 'Can borrow up to 2 books.'],
         [6,  'probation', 'Probation',     1,    1.0, 'warning', 'Can borrow only 1 book.'],
         [1,  'final',     'Final warning', 1,    0.5, 'danger',  'Can borrow only 1 book, for half the usual loan period.'],
-        [0,  'blocked',   'Blocked',       0,    0.0, 'dark',    'Cannot borrow any books until the Head Librarian settles their status.'],
+        [0,  'blocked',   'Blocked',       0,    0.0, 'dark',    'Cannot borrow any books until a librarian settles their status.'],
     ];
 
     /**

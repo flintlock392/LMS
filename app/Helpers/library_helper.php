@@ -423,7 +423,7 @@ if (! function_exists('nav_items')) {
                 ['Dashboard', 'speedometer2', 'dashboard'],
                 ['Library', 'book', 'library', $collection],
                 ['User Registration', 'person-plus', 'members'],
-                ['Credit Records', 'shield-exclamation', 'credits'],
+                ['Credit Management', 'shield-exclamation', 'credits'],
                 ['Reports', 'file-earmark-bar-graph', 'reports'],
             ],
             UserModel::STUDENT => [
@@ -448,5 +448,66 @@ if (! function_exists('module_title')) {
         }
 
         return ucfirst($path);
+    }
+}
+
+if (! function_exists('password_rule')) {
+    /**
+     * Password policy: at least 8 characters with a capital letter, a number and a special character.
+     * Used by My Account (change password) and when registering students and staff.
+     */
+    function password_rule(bool $required = true): array
+    {
+        return [
+            'rules'  => [$required ? 'required' : 'permit_empty', 'max_length[72]', 'regex_match[/^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/]'],
+            'errors' => ['regex_match' => PASSWORD_POLICY],
+        ];
+    }
+}
+
+if (! defined('PASSWORD_POLICY')) {
+    define('PASSWORD_POLICY', 'The password needs at least 8 characters, including a capital letter, a number and a special character (e.g. ! @ # $).');
+}
+
+if (! function_exists('mark_seen')) {
+    /** A student opened My Loans / My Credits: remember when (users.loans_seen_at / credits_seen_at). */
+    function mark_seen(string $column): void
+    {
+        if (! in_array($column, ['loans_seen_at', 'credits_seen_at'], true) || ! session()->get('userId')) {
+            return;
+        }
+        db_connect()->table('users')->where('id', (int) session()->get('userId'))->update([$column => date('Y-m-d H:i:s')]);
+    }
+}
+
+if (! function_exists('student_nav_counts')) {
+    /**
+     * Sidebar counts for a student, in the same shape as the staff ones: [path => [count, noun]].
+     *   My Loans:   books due today or overdue + borrow / return requests answered since they last looked
+     *   My Credits: credits deducted + appeals answered since they last looked
+     */
+    function student_nav_counts(int $userId): array
+    {
+        $db   = db_connect();
+        $user = $db->table('users')->select('loans_seen_at, credits_seen_at')->where('id', $userId)->get()->getRowArray();
+        if (! $user) {
+            return [];
+        }
+        $loansSeen   = $user['loans_seen_at'] ?? '1970-01-01';
+        $creditsSeen = $user['credits_seen_at'] ?? '1970-01-01';
+
+        $due = $db->table('borrowings')->where('user_id', $userId)->where('status', 'borrowed')
+            ->where('due_date <=', date('Y-m-d'))->countAllResults();
+        $answered = $db->table('book_requests')->where('user_id', $userId)->whereIn('status', ['approved', 'declined'])
+            ->where('handled_at >', $loansSeen)->countAllResults();
+        $appeals = $db->table('credit_appeals')->where('user_id', $userId)->whereIn('status', ['approved', 'declined'])
+            ->where('handled_at >', $creditsSeen)->countAllResults();
+        $deducted = $db->table('credit_logs')->where('user_id', $userId)->where('change <', 0)
+            ->where('created_at >', $creditsSeen)->countAllResults();
+
+        return [
+            'my/loans'   => [$due + $answered, 'loan update'],   // e.g. "2 loan updates"
+            'my/credits' => [$appeals + $deducted, 'credit update'],
+        ];
     }
 }

@@ -66,10 +66,6 @@ $routes->group('', ['filter' => $head], static function ($routes) {
     $routes->post('members/(:num)/archive', 'Members::archive/$1');
 
 
-    // Credit Management: add / reduce credits, handle appeals (Head Librarian only)
-    $routes->post('credits/adjust', 'Credits::adjust');
-    $routes->post('credits/appeals/(:num)/approve', 'Credits::approveAppeal/$1');
-    $routes->post('credits/appeals/(:num)/decline', 'Credits::declineAppeal/$1');
 
     $routes->get('staff', 'Staff::index');
     $routes->get('staff/new', 'Staff::new');
@@ -104,6 +100,8 @@ $routes->group('', ['filter' => $staff], static function ($routes) {
     $routes->post('requests/(:num)/approve', 'Requests::approve/$1');
     $routes->post('requests/(:num)/receive', 'Requests::receive/$1');
     $routes->post('requests/(:num)/decline', 'Requests::decline/$1');
+    $routes->post('requests/student/(:num)/approve', 'Requests::approveMany/$1');   // View requests pop-up: ticked books
+    $routes->post('requests/student/(:num)/decline', 'Requests::declineMany/$1');
     $routes->post('circulation/(:num)/return', 'Circulation::receive/$1');
     $routes->post('inventory/adjust', 'Inventory::adjust');   // Update Stock: add / remove copies (Head Librarian and Librarian Staff)
 
@@ -116,8 +114,11 @@ $routes->group('', ['filter' => $staff], static function ($routes) {
 
     $routes->get('inventory', 'Library::legacy/inventory');
 
-    // Credit Management (view: head + staff)
+    // Credit Management (head + staff)
     $routes->get('credits', 'Credits::index');
+    $routes->post('credits/adjust', 'Credits::adjust');   // deduct / restore credits (Head Librarian and Librarian Staff)
+    $routes->post('credits/appeals/(:num)/approve', 'Credits::approveAppeal/$1');   // appeals: both staff levels
+    $routes->post('credits/appeals/(:num)/decline', 'Credits::declineAppeal/$1');
 
     $routes->get('reports', 'Reports::index');
     $routes->get('reports/export/(:segment)', 'Reports::export/$1');

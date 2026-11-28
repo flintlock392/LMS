@@ -85,6 +85,32 @@ class Library extends BaseController
             unset($r);
             $data['rows']  = $rows;
             $data['pager'] = $model->pager;
+
+            // Students with more than one waiting request get one row and a "View requests" pop-up
+            // listing all of them (also any on other pages), so they can be handled together.
+            $data['studentRequests'] = [];
+            $data['studentInfo']     = [];
+            $userIds = array_unique(array_column($rows, 'user_id'));
+            if ($userIds) {
+                $all = (new BookRequestModel())->detailed()->where('book_requests.status', 'pending')
+                    ->whereIn('book_requests.user_id', $userIds)->orderBy('book_requests.created_at', 'ASC')->findAll();
+                foreach ($all as $r) {
+                    [$r['days_late'], $r['est_credits']] = $r['type'] === 'return' && $r['due_date']
+                        ? $service->overdueCredits($r['due_date'], date('Y-m-d')) : [0, 0];
+                    $data['studentRequests'][(int) $r['user_id']][] = $r;
+                }
+                $data['studentRequests'] = array_filter($data['studentRequests'], static fn ($list) => count($list) > 1);
+                if ($data['studentRequests']) {
+                    $ids = array_keys($data['studentRequests']);
+                    $onLoan = array_column(db_connect()->table('borrowings')->select('user_id, COUNT(*) AS n')
+                        ->where('status', 'borrowed')->whereIn('user_id', $ids)->groupBy('user_id')->get()->getResultArray(), 'n', 'user_id');
+                    foreach ((new UserModel())->select('id, name, id_number, course, credits')->whereIn('id', $ids)->findAll() as $u) {
+                        $u['on_loan'] = (int) ($onLoan[$u['id']] ?? 0);
+                        $u['limit']   = \App\Libraries\CreditPolicy::maxBooks((int) $u['credits'], (int) setting('max_loans'));
+                        $data['studentInfo'][(int) $u['id']] = $u;
+                    }
+                }
+            }
         } elseif ($tab === 'collections') {
             // Unavailable titles first, then the ones with the fewest copies left (A–Z within each).
             $model = new BookModel();

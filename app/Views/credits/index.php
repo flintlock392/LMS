@@ -36,15 +36,12 @@ $tabs = [
             </a>
         <?php endforeach; ?>
     </nav>
-    <?php if (is_head()): ?>
+    <?php if (is_staff()): ?>
         <button class="btn btn-nook ms-auto" type="button" data-bs-toggle="modal" data-bs-target="#adjustModal"><i class="bi bi-plus-slash-minus me-1"></i>Deduct / restore credits</button>
     <?php endif; ?>
 </div>
 
 <div class="panel">
-    <?php if (! is_head()): ?>
-        <p class="small text-muted"><i class="bi bi-eye me-1"></i>View only. Every student starts with <?= CreditPolicy::MAX ?> credits. Credits are deducted automatically for late, damaged or lost books; only the Head Librarian can restore them.</p>
-    <?php endif; ?>
 
     <?php if ($tab === 'students'): ?>
         <form class="filters" method="get" data-filter-form>
@@ -74,7 +71,7 @@ $tabs = [
                             <?php if ($t['loanFactor'] < 1 && $t['loanFactor'] > 0): ?><div class="sub">Shorter loans</div><?php endif; ?></td>
                         <td><?= (int) $u['loans'] ?></td>
                         <td class="actions">
-                            <?php if (is_head()): ?>
+                            <?php if (is_staff()): ?>
                                 <button class="btn btn-sm btn-outline-nook" type="button" data-bs-toggle="modal" data-bs-target="#adjustModal"
                                         data-user-id="<?= $u['id'] ?>" data-user-label="<?= esc($u['name'] . ' (' . $u['id_number'] . ')') ?>" data-credits="<?= (int) $u['credits'] ?>"><i class="bi bi-plus-slash-minus"></i> Adjust</button>
                             <?php endif; ?>
@@ -105,29 +102,20 @@ $tabs = [
                         </div>
                         <div class="text-end"><?= credit_badge($a['credits']) ?><div class="mt-1"><?= status_badge($a['status']) ?></div></div>
                     </div>
-                    <p class="appeal-message mt-2 mb-2"><?= nl2br(esc($a['message'])) ?></p>
+                    <p class="appeal-message mt-2 mb-2"><?= esc($a['message']) ?></p>
                     <?php if ($a['status'] !== 'pending'): ?>
                         <div class="sub"><?= $a['status'] === 'approved' ? 'Restored ' . (int) $a['reduced_by'] . ' credit(s)' : 'Declined' ?> by <?= esc($a['handled_by_name'] ?? '—') ?> on <?= fmt_date($a['handled_at'], true) ?><?= $a['response'] ? ' · "' . esc($a['response']) . '"' : '' ?></div>
-                    <?php elseif (is_head()): ?>
-                        <div class="row g-2 align-items-end">
-                            <form class="col-lg-7 d-flex flex-wrap gap-2 align-items-end" method="post" action="<?= site_url('credits/appeals/' . $a['id'] . '/approve') ?>"
-                                  data-confirm="Approve <?= esc($a['student_name']) ?>'s appeal and restore the credits?">
-                                <?= csrf_field() ?>
-                                <?php $missing = CreditPolicy::MAX - (int) $a['credits']; ?>
-                                <div><label class="form-label small mb-1" for="r<?= $a['id'] ?>">Restore</label>
-                                    <input class="form-control form-control-sm" type="number" id="r<?= $a['id'] ?>" name="reduce_by" min="1" max="<?= max(1, $missing) ?>" value="<?= max(1, min(5, $missing)) ?>" style="width:90px" required></div>
-                                <input class="form-control form-control-sm flex-grow-1" name="response" maxlength="200" placeholder="Note to the student (optional)" style="min-width:160px">
-                                <button class="btn btn-sm btn-nook"><i class="bi bi-check2 me-1"></i>Approve</button>
-                            </form>
-                            <form class="col-lg-5 d-flex gap-2 align-items-end" method="post" action="<?= site_url('credits/appeals/' . $a['id'] . '/decline') ?>"
-                                  data-confirm="Decline <?= esc($a['student_name']) ?>'s appeal?">
-                                <?= csrf_field() ?>
-                                <input class="form-control form-control-sm" name="response" maxlength="200" placeholder="Reason (optional)">
-                                <button class="btn btn-sm btn-outline-danger text-nowrap">Decline</button>
-                            </form>
+                    <?php elseif (is_staff()): ?>
+                        <!-- One button; the restore / decline form is in the "Review appeal" pop-up -->
+                        <div class="d-flex justify-content-end">
+                            <button class="btn btn-sm btn-nook" type="button" data-bs-toggle="modal" data-bs-target="#appealModal"
+                                    data-id="<?= $a['id'] ?>" data-name="<?= esc($a['student_name']) ?>" data-number="<?= esc($a['student_id_number']) ?>"
+                                    data-credits="<?= (int) $a['credits'] ?>" data-kind="<?= esc(CreditAppealModel::TYPES[$a['type']] ?? $a['type']) ?><?= $a['hours'] ? ' · ' . rtrim(rtrim($a['hours'], '0'), '.') . ' hour(s) of help' : '' ?>"
+                                    data-message="<?= esc($a['message']) ?>">
+                                <i class="bi bi-clipboard-check me-1"></i>Review appeal</button>
                         </div>
                     <?php else: ?>
-                        <div class="sub">Waiting for the Head Librarian.</div>
+                        <div class="sub">Waiting for review.</div>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
@@ -168,7 +156,7 @@ $tabs = [
     <?php endif; ?>
 </div>
 
-<?php if (is_head()): ?>
+<?php if (is_staff()): ?>
 <!-- Deduct / restore credits -->
 <div class="modal fade" id="adjustModal" tabindex="-1" aria-labelledby="adjustTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 440px"><div class="modal-content adjust-modal">
@@ -210,11 +198,124 @@ $tabs = [
         </form>
     </div></div>
 </div>
+
+<!-- Review appeal: approve (restore credits, with a before → after preview) or decline -->
+<div class="modal fade" id="appealModal" tabindex="-1" aria-labelledby="appealTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px"><div class="modal-content adjust-modal">
+        <form method="post" id="appealForm">
+            <?= csrf_field() ?>
+            <div class="modal-header border-0 pb-0">
+                <h2 class="modal-title panel-title mb-0" id="appealTitle"><i class="bi bi-clipboard-check"></i> Review appeal</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <strong data-ap="name"></strong><span class="sub" data-ap="number"></span>
+                </div>
+                <div class="sub mb-2" data-ap="kind"></div>
+                <p class="appeal-message mb-3" data-ap="message"></p>
+
+                <div class="btn-group w-100 mb-3" role="group" aria-label="Approve or decline">
+                    <input type="radio" class="btn-check" name="decision" id="ap-approve" value="approve" checked>
+                    <label class="btn btn-outline-success" for="ap-approve"><i class="bi bi-check2"></i> Approve</label>
+                    <input type="radio" class="btn-check" name="decision" id="ap-decline" value="decline">
+                    <label class="btn btn-outline-danger" for="ap-decline"><i class="bi bi-x-lg"></i> Decline</label>
+                </div>
+
+                <div data-ap-part="approve">
+                    <label class="form-label" for="ap-amount">Credits to restore</label>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <button class="btn btn-outline-nook btn-sm" type="button" data-ap-step="-1" aria-label="One less">−</button>
+                        <input class="form-control text-center" type="number" id="ap-amount" name="reduce_by" min="1" value="5" style="width:80px" required>
+                        <button class="btn btn-outline-nook btn-sm" type="button" data-ap-step="1" aria-label="One more">+</button>
+                        <span class="sub ms-1" data-ap="limit"></span>
+                    </div>
+                    <!-- Before → after -->
+                    <div class="ap-preview mb-3">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>Now <strong data-ap="before"></strong></span>
+                            <span>After <strong data-ap="after"></strong> of <?= CreditPolicy::MAX ?></span>
+                        </div>
+                        <div class="ap-bar"><span class="ap-now"></span><span class="ap-add"></span></div>
+                        <div class="small mt-1" data-ap="tier"></div>
+                    </div>
+                    <label class="form-label" for="ap-note">Note to the student <span class="text-muted">(optional)</span></label>
+                    <input class="form-control mb-3" id="ap-note" name="response" maxlength="200" placeholder="e.g. Thanks for helping sort the shelves">
+                </div>
+
+                <div data-ap-part="decline" hidden>
+                    <label class="form-label" for="ap-reason">Reason for declining <span class="text-muted">(optional)</span></label>
+                    <input class="form-control mb-3" id="ap-reason" maxlength="200" placeholder="The student will see this under My Credits">
+                </div>
+
+                <button class="btn btn-nook w-100" id="ap-submit">Approve and restore</button>
+            </div>
+        </form>
+    </div></div>
+</div>
 <?php endif; ?>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
-<?php if (is_head()): ?>
+<?php if (is_staff()): ?>
+<script>
+    // Review appeal pop-up.
+    (function () {
+        const modal = document.getElementById('appealModal'), form = document.getElementById('appealForm');
+        const MAX = <?= CreditPolicy::MAX ?>;
+        const TIERS = <?= json_encode(array_map(static fn ($t) => [$t[0], $t[2], $t[5]], CreditPolicy::TIERS)) ?>;   // [min, label, tone], best first
+        const amount = document.getElementById('ap-amount'), submit = document.getElementById('ap-submit');
+        const note = document.getElementById('ap-note'), reason = document.getElementById('ap-reason');
+        const q = k => modal.querySelector('[data-ap="' + k + '"]');
+        const base = '<?= site_url('credits/appeals') ?>/';
+        let id = 0, credits = 0, name = '';
+        const tierOf = c => TIERS.find(t => c >= t[0]);
+        function decision() { return form.querySelector('input[name="decision"]:checked').value; }
+        function render() {
+            const approve = decision() === 'approve', room = MAX - credits;
+            modal.querySelector('[data-ap-part="approve"]').hidden = !approve;
+            modal.querySelector('[data-ap-part="decline"]').hidden = approve;
+            // Only the visible box is sent as "response".
+            note.name = approve ? 'response' : ''; reason.name = approve ? '' : 'response';
+            amount.required = approve; amount.disabled = !approve;
+            form.action = base + id + '/' + (approve ? 'approve' : 'decline');
+            if (!approve) {
+                submit.className = 'btn btn-danger w-100'; submit.textContent = 'Decline appeal'; submit.disabled = false;
+                return;
+            }
+            let n = Math.max(1, Math.min(room, parseInt(amount.value, 10) || 1));
+            amount.max = Math.max(1, room); amount.value = n;
+            const after = credits + n, before = tierOf(credits), next = tierOf(after);
+            q('before').textContent = credits; q('after').textContent = after;
+            q('limit').textContent = room > 0 ? 'up to ' + room : 'already full';
+            modal.querySelector('.ap-now').style.width = (credits / MAX * 100) + '%';
+            modal.querySelector('.ap-add').style.width = (n / MAX * 100) + '%';
+            q('tier').innerHTML = before[1] === next[1]
+                ? 'Stays in <strong>' + next[1] + '</strong>.'
+                : '<strong>' + before[1] + '</strong> → <strong class="text-success">' + next[1] + '</strong>';
+            submit.className = 'btn btn-nook w-100';
+            submit.textContent = 'Approve and restore ' + n + ' credit' + (n === 1 ? '' : 's');
+            submit.disabled = room <= 0;
+        }
+        modal.addEventListener('show.bs.modal', function (e) {
+            const b = e.relatedTarget; if (!b) { return; }
+            id = b.dataset.id; credits = parseInt(b.dataset.credits, 10); name = b.dataset.name;
+            q('name').textContent = name; q('number').textContent = b.dataset.number;
+            q('kind').textContent = b.dataset.kind; q('message').textContent = b.dataset.message;
+            document.getElementById('ap-approve').checked = true;
+            amount.value = Math.min(5, MAX - credits); note.value = ''; reason.value = '';
+            render();
+        });
+        form.querySelectorAll('input[name="decision"]').forEach(r => r.addEventListener('change', render));
+        amount.addEventListener('input', render);
+        modal.querySelectorAll('[data-ap-step]').forEach(b => b.addEventListener('click', function () {
+            amount.value = (parseInt(amount.value, 10) || 0) + parseInt(b.dataset.apStep, 10); render();
+        }));
+        form.addEventListener('submit', () => { submit.disabled = true; });
+    })();
+</script>
+<?php endif; ?>
+<?php if (is_staff()): ?>
 <script>
     (function () {
         const modal = document.getElementById('adjustModal');

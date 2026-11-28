@@ -12,7 +12,7 @@ use RuntimeException;
 /**
  * Credit Management (replaces fines).
  *   Head Librarian:  "Credit Management" — deduct / restore credits, approve or decline appeals.
- *   Librarian Staff: "Credit Records"    — view only.
+ *   Librarian Staff: "Credit Management" — the same: deduct / restore credits, approve or decline appeals.
  *
  * Tabs: students (balances) · appeals · history
  */
@@ -75,7 +75,7 @@ class Credits extends BaseController
         return view('credits/index', $data);
     }
 
-    /** Head Librarian: deduct credits for a violation, or restore them (library service, settlement, correction). */
+    /** Staff: deduct credits for a violation, or restore them (library service, settlement, correction). */
     public function adjust()
     {
         $direction = (string) $this->request->getPost('direction');
@@ -125,7 +125,7 @@ class Credits extends BaseController
         return redirect()->back()->with('success', $user['name'] . ' now has ' . $after . ' of ' . CreditPolicy::MAX . ' credit' . ($after === 1 ? '' : 's') . ' (' . $tier['label'] . '). ' . $tier['explain']);
     }
 
-    /** Head Librarian approves an appeal and restores credits. */
+    /** Staff (Head Librarian or Librarian Staff) approves an appeal and restores credits. */
     public function approveAppeal(int $id)
     {
         try {

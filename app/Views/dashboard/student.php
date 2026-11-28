@@ -26,7 +26,7 @@
 
 <?php if ($tier['key'] === 'blocked'): ?>
     <div class="alert alert-danger"><i class="bi bi-slash-circle me-1"></i>
-        You can't borrow books right now (<?= $credits ?> credits). <a href="<?= site_url('my/credits') ?>">Appeal to the Head Librarian</a> to settle your status.</div>
+        You can't borrow books right now (<?= $credits ?> credits). <a href="<?= site_url('my/credits') ?>">Appeal to the librarians</a> to settle your status.</div>
 <?php elseif ($tier['key'] !== 'good'): ?>
     <div class="alert alert-warning"><i class="bi bi-shield-exclamation me-1"></i>
         <strong><?= esc($tier['label']) ?></strong> (<?= $credits ?> credits): <?= esc($tier['explain']) ?> <a href="<?= site_url('my/credits') ?>">How to get credits back</a></div>

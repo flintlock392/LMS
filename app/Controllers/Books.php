@@ -85,7 +85,7 @@ class Books extends BaseController
         }
 
         $this->books->delete($id);   // soft delete: sets archived_at
-        log_activity('book', 'archived', 'Archived "' . $book['title'] . '" (ISBN ' . $book['isbn'] . ')', 'book', $id);
+        log_activity('archive', 'archived', 'Archived "' . $book['title'] . '" (ISBN ' . $book['isbn'] . ')', 'book', $id);
 
         return redirect()->to('/library?tab=collections')->with('success', '"' . $book['title'] . '" was archived. You can restore it from the Archive page.');
     }
