@@ -18,7 +18,7 @@ class BorrowingModel extends Model
     /** Base query with book, borrower and staff names joined in. */
     public function detailed(): self
     {
-        return $this->select('borrowings.*, books.title, books.isbn, books.author,
+        return $this->select('borrowings.*, books.title, books.isbn, books.author, books.cover, books.edition,
                 u.name AS borrower_name, u.id_number AS borrower_id_number,
                 iss.name AS issued_by_name, rec.name AS received_by_name')
             ->join('books', 'books.id = borrowings.book_id')
@@ -43,6 +43,9 @@ class BorrowingModel extends Model
             case 'overdue':
                 $this->where('borrowings.status', 'borrowed')->where('borrowings.due_date <', $today);
                 break;
+            case 'due_today':
+                $this->where('borrowings.status', 'borrowed')->where('borrowings.due_date', $today);
+                break;
             case 'returned':
                 $this->where('borrowings.status', 'returned');
                 break;
@@ -61,6 +64,7 @@ class BorrowingModel extends Model
         }
         // Course the borrowed book is meant for (one of the four programs, or General reading).
         apply_course_filter($this, 'books.course', (string) ($f['course'] ?? ''));
+        apply_shelf_filter($this, 'books.shelf_location', (string) ($f['shelf'] ?? ''));
 
         // Category of the borrowed book ("none" = uncategorized).
         if (! empty($f['category_id'])) {

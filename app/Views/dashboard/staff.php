@@ -103,7 +103,7 @@
                         <tbody>
                         <?php foreach ($overdue as $l): ?>
                             <tr>
-                                <td><?= esc($l['title']) ?></td>
+                                <td><div class="book-cell"><?= book_cover($l, 'cover-sm', 'S') ?><div><?= esc($l['title']) ?><span class="d-block small text-muted">ISBN <?= esc($l['isbn']) ?></span></div></div></td>
                                 <td><?= esc($l['borrower_name']) ?><div class="sub"><?= esc($l['borrower_id_number']) ?></div></td>
                                 <td><?= fmt_date($l['due_date']) ?></td>
                                 <td><span class="pill pill-danger"><?= (int) floor((time() - strtotime($l['due_date'])) / 86400) ?> days</span></td>
@@ -116,7 +116,7 @@
         </div>
 
         <div class="panel">
-            <h2 class="panel-title"><i class="bi bi-clock-history"></i> Recent circulation</h2>
+            <h2 class="panel-title"><i class="bi bi-clock-history"></i> Recent Activity</h2>
             <?php if (! $recent): ?>
                 <div class="empty"><i class="bi bi-inbox"></i>No activity yet.</div>
             <?php else: ?>
@@ -126,7 +126,7 @@
                         <tbody>
                         <?php foreach ($recent as $l): ?>
                             <tr>
-                                <td><?= esc($l['title']) ?></td>
+                                <td><div class="book-cell"><?= book_cover($l, 'cover-sm', 'S') ?><div><?= esc($l['title']) ?><span class="d-block small text-muted">ISBN <?= esc($l['isbn']) ?></span></div></div></td>
                                 <td><?= esc($l['borrower_name']) ?></td>
                                 <td><?= status_badge($l['status'], $l['due_date']) ?></td>
                                 <td class="sub"><?= fmt_date($l['updated_at'], true) ?></td>
@@ -148,7 +148,7 @@
                 <ul class="list-unstyled mb-0">
                     <?php foreach ($dueSoon as $l): ?>
                         <li class="d-flex justify-content-between py-2 border-bottom">
-                            <span><?= esc($l['title']) ?><span class="d-block small text-muted"><?= esc($l['borrower_name']) ?></span></span>
+                            <div class="book-cell"><?= book_cover($l, 'cover-sm', 'S') ?><div><?= esc($l['title']) ?><span class="d-block small text-muted">ISBN <?= esc($l['isbn']) ?> · <?= esc($l['borrower_name']) ?></span></div></div>
                             <span class="small"><?= $l['due_date'] === date('Y-m-d') ? '<span class="pill pill-warning">Today</span>' : fmt_date($l['due_date']) ?></span>
                         </li>
                     <?php endforeach; ?>
@@ -157,7 +157,7 @@
         </div>
 
         <div class="panel">
-            <h2 class="panel-title"><i class="bi bi-shield-exclamation"></i> Students with credits
+            <h2 class="panel-title"><i class="bi bi-shield-exclamation"></i> Students who lost credits
                 <a class="ms-auto small" href="<?= site_url('credits') ?>"><?= esc(module_title('credits')) ?></a></h2>
             <?php if (! $atRisk): ?>
                 <div class="empty"><i class="bi bi-emoji-smile"></i>Every student is in good standing.</div>
@@ -182,7 +182,7 @@
                 <ul class="list-unstyled mb-0">
                     <?php foreach ($lowStock as $b): ?>
                         <li class="d-flex justify-content-between py-2 border-bottom">
-                            <span><?= esc($b['title']) ?></span>
+                            <div class="book-cell"><?= book_cover($b, 'cover-sm', 'S') ?><div><?= esc($b['title']) ?><span class="d-block small text-muted">ISBN <?= esc($b['isbn']) ?></span></div></div>
                             <span class="small text-muted"><?= (int) $b['on_loan'] ?> on loan</span>
                         </li>
                     <?php endforeach; ?>

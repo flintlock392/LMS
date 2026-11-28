@@ -38,7 +38,7 @@ $restore = static fn (string $type, array $row, string $name) => '<form class="d
                 <?php foreach ($rows as $r): $name = $r['title'] ?? $r['name']; ?>
                     <tr>
                         <?php if ($type === 'book'): ?>
-                            <td class="fw-semibold"><?= esc($r['title']) ?><div class="sub"><?= esc($r['author']) ?></div></td><td><?= esc($r['isbn']) ?></td><td><?= (int) $r['stock_count'] ?></td>
+                            <td class="fw-semibold"><div class="book-cell"><?= book_cover($r, 'cover-sm', 'S') ?><div><?= esc($r['title']) ?><div class="sub"><?= esc($r['author']) ?></div></div></div></td><td><?= esc($r['isbn']) ?></td><td><?= (int) $r['stock_count'] ?></td>
                         <?php elseif ($type === 'category'): ?>
                             <td class="fw-semibold"><?= esc($r['name']) ?></td><td class="sub"><?= esc($r['description'] ?? '') ?></td>
                         <?php else: ?>

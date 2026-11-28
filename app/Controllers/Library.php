@@ -62,19 +62,21 @@ class Library extends BaseController
             'categories' => (new CategoryModel())->orderBy('name')->findAll(),
             'category'   => (string) $this->request->getGet('category_id'),
             'course'     => (string) $this->request->getGet('course'),
+            'shelf'      => trim((string) $this->request->getGet('shelf')),   // "section:F" or one shelf like "F-604"
+            'shelves'    => shelf_options(),
             'courses'    => UserModel::COURSES,  // the four programs (plus "Other" in the view)
             // For the "Issue book" dialog.
             'students'   => (new UserModel())->where('role', UserModel::STUDENT)->activeBorrowers(),
             'bookList'   => (new BookModel())->forSelect(),
             // For the "Update Stock" dialog (Head Librarian), available on every tab.
-            'allBooks'   => is_head() ? (new BookModel())->forSelect() : [],
+            'allBooks'   => (new BookModel())->forSelect(),   // Update Stock title list (Head Librarian and Librarian Staff)
         ];
 
         if ($tab === 'requested') {
             // Students' waiting "Request to borrow" / "Request return" (oldest first).
             $model = new BookRequestModel();
             $rows  = $model->pendingFiltered([
-                'q' => $q, 'from' => $from, 'to' => $to, 'course' => $data['course'], 'category_id' => $data['category'],
+                'q' => $q, 'from' => $from, 'to' => $to, 'course' => $data['course'], 'category_id' => $data['category'], 'shelf' => $data['shelf'],
             ])->paginate(self::PER_PAGE);
             foreach ($rows as &$r) {
                 [$r['days_late'], $r['est_credits']] = $r['type'] === 'return' && $r['due_date']
@@ -90,6 +92,7 @@ class Library extends BaseController
                 'q'           => $q,
                 'category_id' => $data['category'],
                 'course'      => $data['course'],
+                'shelf'       => $data['shelf'],
                 'added_from'  => $from,
                 'added_to'    => $to,
                 'sort'        => 'available',
@@ -100,7 +103,7 @@ class Library extends BaseController
         } else {
             $status = ['all' => 'all', 'borrowed' => 'active', 'overdue' => 'overdue', 'returned' => 'returned', 'lost' => 'lost'][$tab];
             $model  = new BorrowingModel();
-            $rows   = $model->filtered(['status' => $status, 'q' => $q, 'from' => $from, 'to' => $to, 'course' => $data['course'], 'category_id' => $data['category']])->paginate(self::PER_PAGE);
+            $rows   = $model->filtered(['status' => $status, 'q' => $q, 'from' => $from, 'to' => $to, 'course' => $data['course'], 'category_id' => $data['category'], 'shelf' => $data['shelf']])->paginate(self::PER_PAGE);
             foreach ($rows as &$r) {
                 [$r['days_late'], $r['est_credits']] = $r['status'] === 'borrowed' ? $service->overdueCredits($r['due_date'], date('Y-m-d')) : [0, 0];
             }
@@ -110,6 +113,11 @@ class Library extends BaseController
         }
 
         $data['summary'] = $this->summary($tab, $q, $from, $to, $data['pager'] ? $data['pager']->getTotal() : 0);
+        // Mention the chosen shelf, e.g. "… on shelf F-604 · 1 result" / "… in section F · 5 results".
+        if ($data['shelf'] !== '') {
+            $where = str_starts_with($data['shelf'], 'section:') ? 'in shelf section ' . substr($data['shelf'], 8) : 'on shelf ' . $data['shelf'];
+            $data['summary'] = preg_replace('/ · (?=[^·]*$)/', ' ' . esc($where) . ' · ', $data['summary'], 1);
+        }
         // Mention the chosen course, e.g. "… for Bachelor of Science in Education · 2 results".
         if (in_array($data['course'], [...UserModel::COURSES, '__general'], true)) {
             $label = match ($data['course']) {

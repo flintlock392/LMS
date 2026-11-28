@@ -13,7 +13,7 @@
                 <h2 class="h6 mt-4">Borrowing at a glance</h2>
                 <ul class="mb-0">
                     <li>Borrow up to <strong><?= (int) setting('max_loans') ?></strong> books at a time for <strong><?= (int) setting('loan_days') ?> days</strong>.</li>
-                    <li>Late, damaged or lost books add <strong>credits</strong> to your record. More credits mean fewer books you can borrow; at <?= \App\Libraries\CreditPolicy::MAX ?> credits borrowing stops until the Head Librarian settles your status.</li>
+                    <li>Every student starts with <strong><?= \App\Libraries\CreditPolicy::MAX ?> credits</strong>. Late, damaged or lost books deduct credits; fewer credits mean fewer books you can borrow, and at 0 credits borrowing stops until the Head Librarian settles your status.</li>
                     <li>Log in with your <strong>student number</strong>. It also serves as your library card number.</li>
                 </ul>
             </div>

@@ -45,5 +45,15 @@ abstract class BaseController extends Controller
 
         // Preload any models, libraries, etc, here.
         // $this->session = service('session');
+
+        // Overdue books earn late credits every day, not only when they come back.
+        // Runs once per day, on the first page a signed-in user opens.
+        if (session()->get('isLoggedIn')) {
+            $key = 'overdue-credits-' . date('Ymd');
+            if (! cache($key)) {
+                cache()->save($key, 1, DAY + HOUR);
+                (new \App\Libraries\Circulation())->accrueOverdueCredits();
+            }
+        }
     }
 }

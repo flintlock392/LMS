@@ -90,10 +90,11 @@ class Suggest extends BaseController
             // Searching by number shows the number first; otherwise the name.
             'label' => $match === 'student_no' ? $u['id_number'] : $u['name'],
             'sub'   => ($match === 'student_no' ? $u['name'] : $u['id_number']) . ($u['course'] ? ' · ' . $u['course'] : '')
-                . ((int) $u['credits'] > 0 ? ' · ' . (int) $u['credits'] . ' credits' : '')
+                . ((int) $u['credits'] < \App\Libraries\CreditPolicy::MAX ? ' · ' . (int) $u['credits'] . ' credits' : '')
                 . ($u['status'] !== 'active' ? ' · suspended' : ''),
             'value' => $u['id_number'],   // a student number matches exactly one student
             'pick'  => $u['name'] . ' (' . $u['id_number'] . ')',
+            'credits' => (int) $u['credits'],
         ], $rows);
     }
 

@@ -11,10 +11,15 @@
                 <h2 class="h5 mb-0 flex-grow-1"><?= esc($book['title']) ?></h2>
                 <a class="btn btn-sm btn-outline-nook" href="<?= site_url('books/' . $book['id'] . '/edit') ?>"><i class="bi bi-pencil"></i> Edit</a>
             </div>
-            <p class="text-muted mb-3">by <?= esc($book['author']) ?></p>
+            <div class="d-flex gap-3 align-items-start mb-3">
+                <?= book_cover($book, 'cover-md', 'M') ?>
+                <p class="text-muted mb-0">by <?= esc($book['author']) ?><?= $book['edition'] ? '<br>' . esc($book['edition']) : '' ?></p>
+            </div>
             <dl class="row small mb-0">
                 <dt class="col-5">ISBN</dt><dd class="col-7"><?= esc($book['isbn']) ?></dd>
                 <dt class="col-5">Category</dt><dd class="col-7"><?= esc($book['category_name'] ?? 'Uncategorized') ?></dd>
+                <dt class="col-5">Edition</dt><dd class="col-7"><?= esc($book['edition'] ?? '—') ?></dd>
+                <dt class="col-5">Course</dt><dd class="col-7"><?= esc($book['course'] ?: 'General reading') ?></dd>
                 <dt class="col-5">Publisher</dt><dd class="col-7"><?= esc($book['publisher'] ?? '—') ?></dd>
                 <dt class="col-5">Year</dt><dd class="col-7"><?= esc($book['publication_year'] ?? '—') ?></dd>
                 <dt class="col-5">Shelf</dt><dd class="col-7"><?= esc($book['shelf_location'] ?? '—') ?></dd>

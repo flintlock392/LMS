@@ -47,6 +47,8 @@ class LibrarySeeder extends Seeder
 
         // Only build sample circulation data on an empty library.
         if ((new BookModel())->countAllResults() > 0) {
+            $this->call('CourseBooksSeeder');   // course books + editions and covers
+
             return;
         }
 
@@ -69,7 +71,7 @@ class LibrarySeeder extends Seeder
             ['Clean Code', '9780132350884', 'Robert C. Martin', 'Programming', 'Prentice Hall', 2008, 'A-101', 4],
             ['Effective Java', '9780134685991', 'Joshua Bloch', 'Programming', 'Addison-Wesley', 2018, 'A-102', 2],
             ['JavaScript: The Good Parts', '9780596517748', 'Douglas Crockford', 'Programming', "O'Reilly Media", 2008, 'A-103', 1],
-            ['The Pragmatic Programmer', '9780135957059', 'David Thomas', 'Programming', 'Addison-Wesley', 2019, 'A-104', 3],
+            ['The Pragmatic Programmer', '9780135957059', 'David Thomas, Andrew Hunt', 'Programming', 'Addison-Wesley', 2019, 'A-104', 3],
             ['The Great Gatsby', '9780743273565', 'F. Scott Fitzgerald', 'Fiction', 'Scribner', 2004, 'B-201', 5],
             ['To Kill a Mockingbird', '9780061120084', 'Harper Lee', 'Fiction', 'Harper Perennial', 2006, 'B-202', 3],
             ['Pride and Prejudice', '9780141439518', 'Jane Austen', 'Fiction', 'Penguin Classics', 2002, 'B-203', 4],
@@ -107,7 +109,7 @@ class LibrarySeeder extends Seeder
         // ---- Sample circulation ---------------------------------------------
         $staff = $userIds['LS-0001'];
         $loans = new BorrowingModel();
-        $creditBalance = [];   // student id => credits, from late returns below
+        $creditBalance = [];   // student id => credits (everyone starts with 20), after late returns below
         $day   = static fn (int $offset, string $fmt = 'Y-m-d H:i:s') => date($fmt, strtotime(($offset >= 0 ? '+' : '') . $offset . ' days'));
 
         // Active, on time.
@@ -133,11 +135,11 @@ class LibrarySeeder extends Seeder
                 'status' => 'returned', 'condition' => 'good',
             ], true);
             if ($late > 0) {
-                // Late returns add credits (1 per day late).
+                // Late returns deduct credits (1 per day late).
                 $uid                 = $userIds[$student];
-                $creditBalance[$uid] = ($creditBalance[$uid] ?? 0) + $late;
+                $creditBalance[$uid] = ($creditBalance[$uid] ?? \App\Libraries\CreditPolicy::MAX) - $late;
                 $this->db->table('credit_logs')->insert([
-                    'user_id' => $uid, 'change' => $late, 'balance_after' => $creditBalance[$uid], 'reason' => 'overdue',
+                    'user_id' => $uid, 'change' => -$late, 'balance_after' => $creditBalance[$uid], 'reason' => 'overdue',
                     'borrowing_id' => $id, 'notes' => $late . ' day(s) late', 'created_by' => $staff,
                     'created_at' => $day($start + 7 + $late),
                 ]);
@@ -149,5 +151,8 @@ class LibrarySeeder extends Seeder
 
         // Turn the sample history above into Activity Log entries.
         $this->call('ActivityBackfillSeeder');
+
+        // Books for each course and general reading, with editions and covers.
+        $this->call('CourseBooksSeeder');
     }
 }

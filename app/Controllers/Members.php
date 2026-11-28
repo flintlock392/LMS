@@ -147,7 +147,7 @@ class Members extends BaseController
             'email'      => ['rules' => 'required|valid_email|max_length[150]|is_unique[users.email' . $ignore . ']', 'errors' => ['is_unique' => 'That email is already registered.']],
             'phone'      => 'permit_empty|max_length[30]',
             ...course_rules(),           // drop-down + "Other" text box
-            'year_level' => 'required|max_length[20]',
+            'year_level' => $id === null ? 'required|in_list[1st Year,2nd Year,3rd Year,4th Year,5th Year]' : 'required|max_length[20]',
             'password'   => $id === null ? 'required|min_length[8]|max_length[72]' : 'permit_empty|min_length[8]|max_length[72]',
         ];
     }

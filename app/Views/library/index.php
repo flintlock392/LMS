@@ -12,8 +12,8 @@ $tabs = [
     'lost'        => 'Lost',
 ];
 // Build a link that keeps the search and date range when switching tabs.
-$url = static function (array $extra = []) use ($tab, $q, $from, $to, $course, $category): string {
-    $params = array_filter(array_merge(['tab' => $tab, 'q' => $q, 'course' => $course, 'category_id' => $category, 'from' => $from, 'to' => $to], $extra), static fn ($v) => $v !== '' && $v !== null);
+$url = static function (array $extra = []) use ($tab, $q, $from, $to, $course, $category, $shelf): string {
+    $params = array_filter(array_merge(['tab' => $tab, 'q' => $q, 'course' => $course, 'category_id' => $category, 'shelf' => $shelf, 'from' => $from, 'to' => $to], $extra), static fn ($v) => $v !== '' && $v !== null);
 
     return site_url('library') . '?' . http_build_query($params);
 };
@@ -27,9 +27,10 @@ $isBookTab = $tab === 'collections';
 <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
     <?php if (is_head()): ?>
         <a class="btn btn-outline-nook" href="<?= site_url('activity') ?>"><i class="bi bi-clock-history me-1"></i>Activity Log</a>
-        <?php if (is_head()): ?><a class="btn btn-outline-nook" href="<?= site_url('archive') ?>"><i class="bi bi-archive me-1"></i>Archive</a><?php endif; ?>
-        <button class="btn btn-outline-nook" type="button" data-bs-toggle="modal" data-bs-target="#stockModal"><i class="bi bi-arrow-repeat me-1"></i>Update Stock</button>
+        <a class="btn btn-outline-nook" href="<?= site_url('archive') ?>"><i class="bi bi-archive me-1"></i>Archive</a>
     <?php endif; ?>
+    <!-- Head Librarian and Librarian Staff can both add or remove copies -->
+    <button class="btn btn-outline-nook" type="button" data-bs-toggle="modal" data-bs-target="#stockModal"><i class="bi bi-arrow-repeat me-1"></i>Update Stock</button>
     <button class="btn btn-outline-nook" type="button" data-bs-toggle="modal" data-bs-target="#issueModal"><i class="bi bi-box-arrow-up-right me-1"></i>Issue book</button>
     <a class="btn btn-nook" href="<?= site_url('books/new') ?>"><i class="bi bi-plus-lg me-1"></i>Add book</a>
 </div>
@@ -70,6 +71,22 @@ $isBookTab = $tab === 'collections';
                     <option value="__general" <?= $course === '__general' ? 'selected' : '' ?>>General reading (includes other courses)</option>
                 </select>
             </div>
+            <div class="field">
+                <label for="shelf">Shelf</label>
+                <select class="form-select form-select-sm" id="shelf" name="shelf">
+                    <option value="">All shelves</option>
+                    <?php foreach ($shelves as $section => $list): ?>
+                        <optgroup label="Section <?= esc($section) ?>">
+                            <?php if (count($list) > 1): ?>
+                                <option value="section:<?= esc($section) ?>" <?= $shelf === 'section:' . $section ? 'selected' : '' ?>>Section <?= esc($section) ?> (all <?= count($list) ?> shelves)</option>
+                            <?php endif; ?>
+                            <?php foreach ($list as $s): ?>
+                                <option value="<?= esc($s) ?>" <?= $shelf === $s ? 'selected' : '' ?>><?= esc($s) ?></option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    <?php endforeach; ?>
+                </select>
+            </div>
         <div class="field">
             <label for="from">Start date</label>
             <input class="form-control form-control-sm" type="date" id="from" name="from" value="<?= esc($from) ?>" max="<?= date('Y-m-d') ?>" aria-describedby="range-help">
@@ -80,7 +97,7 @@ $isBookTab = $tab === 'collections';
             <input class="form-control form-control-sm" type="date" id="to" name="to" value="<?= esc($to) ?>" max="<?= date('Y-m-d') ?>" aria-describedby="range-help">
         </div>
         <button class="btn btn-sm btn-nook" data-apply><i class="bi bi-funnel me-1"></i>Apply</button>
-        <?php if ($q !== '' || $from !== '' || $to !== '' || $category !== '' || $course !== ''): ?>
+        <?php if ($q !== '' || $from !== '' || $to !== '' || $category !== '' || $course !== '' || $shelf !== ''): ?>
             <a class="btn-clear" href="<?= site_url('library?tab=' . $tab) ?>"><i class="bi bi-x-circle"></i>Clear filters</a>
         <?php endif; ?>
     </form>
@@ -108,7 +125,7 @@ $isBookTab = $tab === 'collections';
                     <tr>
                         <td><span class="pill <?= $isBorrow ? 'pill-info' : 'pill-warning' ?>"><i class="bi bi-<?= $isBorrow ? 'bookmark-plus' : 'box-arrow-in-down-left' ?> me-1"></i><?= $isBorrow ? 'Borrow' : 'Return' ?></span>
                             <div class="sub mt-1"><?= fmt_date($r['created_at'], true) ?></div></td>
-                        <td><a class="text-reset" href="<?= site_url('books/' . $r['book_id']) ?>"><?= esc($r['title']) ?></a><div class="sub"><?= esc($r['isbn']) ?></div></td>
+                        <td><div class="book-cell"><?= book_cover($r, 'cover-sm', 'S') ?><div><a class="text-reset" href="<?= site_url('books/' . $r['book_id']) ?>"><?= esc($r['title']) ?></a><div class="sub"><?= esc($r['isbn']) ?></div></div></div></td>
                         <td><a class="text-reset" href="<?= site_url('members/' . $r['user_id']) ?>"><?= esc($r['borrower_name']) ?></a>
                             <div class="sub"><?= esc($r['borrower_id_number']) ?><?= $r['student_course'] ? ' · ' . esc($r['student_course']) : '' ?></div></td>
                         <td>
@@ -119,7 +136,7 @@ $isBookTab = $tab === 'collections';
                                 <div class="sub">Due back <?= fmt_date(date('Y-m-d', strtotime('+' . (int) setting('loan_days') . ' days'))) ?> if issued today</div>
                             <?php else: ?>
                                 Due <?= fmt_date($r['due_date']) ?>
-                                <?php if ($r['days_late'] > 0): ?><div class="sub text-danger"><?= $r['days_late'] ?>d late · +<?= $r['est_credits'] ?> credits</div><?php else: ?><div class="sub">On time</div><?php endif; ?>
+                                <?php if ($r['days_late'] > 0): ?><div class="sub text-danger"><?= $r['days_late'] ?>d late · −<?= $r['est_credits'] ?> credits</div><?php else: ?><div class="sub">On time</div><?php endif; ?>
                             <?php endif; ?>
                         </td>
                         <td class="actions">
@@ -132,7 +149,7 @@ $isBookTab = $tab === 'collections';
                                 <button class="btn btn-sm btn-nook" type="button" data-bs-toggle="modal" data-bs-target="#returnModal"
                                         data-action="<?= site_url('requests/' . $r['id'] . '/receive') ?>"
                                         data-title="<?= esc($r['title']) ?>" data-student="<?= esc($r['borrower_name']) ?>"
-                                        data-late="<?= $r['days_late'] > 0 ? $r['days_late'] . ' day(s) late — +' . $r['est_credits'] . ' credit(s) will be added.' : 'On time — no credits added.' ?>">
+                                        data-late="<?= $r['days_late'] > 0 ? $r['days_late'] . ' day(s) late — ' . $r['est_credits'] . ' credit(s) deducted for lateness.' : 'On time — no credits deducted.' ?>">
                                     <i class="bi bi-box-arrow-in-down-left me-1"></i>Receive return</button>
                             <?php endif; ?>
                             <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="collapse" data-bs-target="#decline-<?= $r['id'] ?>">Decline</button>
@@ -162,19 +179,19 @@ $isBookTab = $tab === 'collections';
                 <tbody>
                 <?php foreach ($rows as $l): ?>
                     <tr>
-                        <td><a class="text-reset" href="<?= site_url('books/' . $l['book_id']) ?>"><?= esc($l['title']) ?></a><div class="sub"><?= esc($l['isbn']) ?></div></td>
+                        <td><div class="book-cell"><?= book_cover($l, 'cover-sm', 'S') ?><div><a class="text-reset" href="<?= site_url('books/' . $l['book_id']) ?>"><?= esc($l['title']) ?></a><div class="sub"><?= esc($l['isbn']) ?></div></div></div></td>
                         <td><a class="text-reset" href="<?= site_url('members/' . $l['user_id']) ?>"><?= esc($l['borrower_name']) ?></a><div class="sub"><?= esc($l['borrower_id_number']) ?></div></td>
                         <td><?= fmt_date($l['borrowed_at']) ?><div class="sub">by <?= esc($l['issued_by_name'] ?? '—') ?></div></td>
                         <td><?= fmt_date($l['due_date']) ?><?php if ($l['returned_at']): ?><div class="sub"><?= $l['status'] === 'lost' ? 'Reported' : 'Back' ?> <?= fmt_date($l['returned_at']) ?></div><?php endif; ?></td>
                         <td><?= status_badge($l['status'], $l['due_date']) ?>
-                            <?php if ($l['days_late'] > 0): ?><div class="sub"><?= $l['days_late'] ?>d late · +<?= $l['est_credits'] ?> credits</div><?php endif; ?>
+                            <?php if ($l['days_late'] > 0): ?><div class="sub"><?= $l['days_late'] ?>d late · −<?= $l['est_credits'] ?> credits</div><?php endif; ?>
                             <?php if ($l['condition'] === 'damaged'): ?><div class="sub text-danger">Damaged</div><?php endif; ?></td>
                         <td class="actions">
                             <?php if ($l['status'] === 'borrowed'): ?>
                                 <button class="btn btn-sm btn-nook" type="button" data-bs-toggle="modal" data-bs-target="#returnModal"
                                         data-action="<?= site_url('circulation/' . $l['id'] . '/return') ?>"
                                         data-title="<?= esc($l['title']) ?>" data-student="<?= esc($l['borrower_name']) ?>"
-                                        data-late="<?= $l['days_late'] > 0 ? $l['days_late'] . ' day(s) late — +' . $l['est_credits'] . ' credit(s) will be added.' : 'On time — no credits added.' ?>">Return</button>
+                                        data-late="<?= $l['days_late'] > 0 ? $l['days_late'] . ' day(s) late — ' . $l['est_credits'] . ' credit(s) deducted for lateness.' : 'On time — no credits deducted.' ?>">Return</button>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -204,7 +221,7 @@ $isBookTab = $tab === 'collections';
                 <tbody>
                 <?php foreach ($rows as $b): ?>
                     <tr>
-                        <td><a class="fw-semibold text-reset" href="<?= site_url('books/' . $b['id']) ?>"><?= esc($b['title']) ?></a><div class="sub">ISBN <?= esc($b['isbn']) ?></div></td>
+                        <td><div class="d-flex gap-2 align-items-center"><?= book_cover($b, 'cover-sm', 'S') ?><div><a class="fw-semibold text-reset" href="<?= site_url('books/' . $b['id']) ?>"><?= esc($b['title']) ?></a><div class="sub"><?= $b['edition'] ? esc($b['edition']) . ' · ' : '' ?>ISBN <?= esc($b['isbn']) ?></div></div></div></td>
                         <td><?= esc($b['author']) ?></td>
                         <td><?= esc($b['category_name'] ?? '—') ?></td>
                         <td><?= esc($b['shelf_location'] ?? '—') ?></td>
@@ -244,7 +261,7 @@ $isBookTab = $tab === 'collections';
     </div>
 <?php endif; ?>
 
-<?php if (is_head()): ?>
+<?php if (is_staff()): ?>
 <!-- Update Stock → Adjust copies -->
 <div class="modal fade" id="stockModal" tabindex="-1" aria-labelledby="stockTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 420px"><div class="modal-content adjust-modal">
@@ -258,7 +275,7 @@ $isBookTab = $tab === 'collections';
                 <div class="mb-3"><label class="form-label" for="book_id_s">Title</label>
                     <select class="form-select" id="book_id_s" name="book_id" required>
                         <option value="">Choose…</option>
-                        <?php foreach ($allBooks as $b): ?><option value="<?= $b['id'] ?>" <?= (string) old('book_id') === (string) $b['id'] ? 'selected' : '' ?>><?= esc($b['title']) ?></option><?php endforeach; ?>
+                        <?php foreach ($allBooks as $b): ?><option value="<?= $b['id'] ?>" <?= (string) old('book_id') === (string) $b['id'] ? 'selected' : '' ?>><?= esc($b['title']) ?> — ISBN <?= esc($b['isbn']) ?></option><?php endforeach; ?>
                     </select></div>
                 <div class="mb-3">
                     <div class="btn-group w-100" role="group" aria-label="Add or remove copies">
@@ -288,32 +305,104 @@ $isBookTab = $tab === 'collections';
 </div>
 <?php endif; ?>
 
-<!-- Issue a book -->
+<!-- Issue a book: pick a student, pick a book, check the summary, issue -->
+<?php
+$loanDays = (int) setting('loan_days');
+$oldUser  = (string) old('user_id');
+$oldBook  = (string) old('book_id');
+?>
 <div class="modal fade" id="issueModal" tabindex="-1" aria-labelledby="issueTitle" aria-hidden="true">
-    <div class="modal-dialog"><div class="modal-content">
-        <form method="post" action="<?= site_url('circulation/issue') ?>">
+    <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content issue-modal">
+        <form method="post" action="<?= site_url('circulation/issue') ?>" id="issueForm">
             <?= csrf_field() ?>
-            <div class="modal-header"><h2 class="modal-title fs-5" id="issueTitle">Issue a book</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label" for="user_id">Student</label>
-                    <input class="form-control form-control-sm mb-1" type="search" placeholder="Type to filter by name or student no." data-filter="user_id" aria-label="Filter students">
-                    <select class="form-select" id="user_id" name="user_id" size="5" required>
-                        <?php foreach ($students as $s): ?><option value="<?= $s['id'] ?>"><?= esc($s['name']) ?> (<?= esc($s['id_number']) ?>)</option><?php endforeach; ?>
-                    </select>
+            <div class="modal-header">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="issue-icon" aria-hidden="true"><i class="bi bi-box-arrow-up-right"></i></span>
+                    <div>
+                        <h2 class="modal-title fs-5 mb-0" id="issueTitle">Issue a book</h2>
+                        <p class="small text-muted mb-0">Choose a student and a book, then check the summary.</p>
+                    </div>
                 </div>
-                <div class="mb-2">
-                    <label class="form-label" for="book_id">Book</label>
-                    <input class="form-control form-control-sm mb-1" type="search" placeholder="Type to filter by title or ISBN" data-filter="book_id" aria-label="Filter books">
-                    <select class="form-select" id="book_id" name="book_id" size="6" required>
-                        <?php foreach ($bookList as $b): ?>
-                            <option value="<?= $b['id'] ?>" data-search="<?= esc(strtolower($b['title'] . ' ' . $b['isbn'] . ' ' . $b['author'])) ?>"><?= esc($b['title']) ?> — <?= (int) $b['available'] > 0 ? (int) $b['available'] . ' available' : 'none free' ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <p class="form-text mb-0">Usually due back <?= fmt_date(date('Y-m-d', strtotime('+' . (int) setting('loan_days') . ' days'))) ?> (<?= (int) setting('loan_days') ?>-day loan). Up to <?= (int) setting('max_loans') ?> books per student, fewer for students with credits; students with overdue books or <?= \App\Libraries\CreditPolicy::MAX ?> credits can't borrow.</p>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button><button class="btn btn-nook"><i class="bi bi-check2 me-1"></i>Issue book</button></div>
+
+            <div class="modal-body">
+                <div class="row g-4">
+                    <!-- 1. Student -->
+                    <fieldset class="col-lg-6">
+                        <legend class="issue-step"><span>1</span>Student</legend>
+                        <div class="search-icon mb-2">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input class="form-control form-control-sm" type="search" placeholder="Name, student no. or course" data-pick-filter="issue-students" aria-label="Search students">
+                        </div>
+                        <div class="pick-list" id="issue-students" role="radiogroup" aria-label="Students">
+                            <?php foreach ($students as $s):
+                                $tier    = \App\Libraries\CreditPolicy::tier((int) $s['credits']);
+                                $limit   = \App\Libraries\CreditPolicy::maxBooks((int) $s['credits'], (int) setting('max_loans'));
+                                $blocked = $limit <= (int) $s['on_loan']; ?>
+                                <label class="pick<?= $blocked ? ' is-limited' : '' ?>" data-search="<?= esc(strtolower($s['name'] . ' ' . $s['id_number'] . ' ' . ($s['course'] ?? ''))) ?>">
+                                    <input class="visually-hidden" type="radio" name="user_id" value="<?= $s['id'] ?>" required <?= $oldUser === (string) $s['id'] ? 'checked' : '' ?>
+                                           data-name="<?= esc($s['name']) ?>" data-sub="<?= esc($s['id_number']) ?>" data-avatar="<?= esc(user_avatar($s, 'avatar-md'), 'attr') ?>">
+                                    <?= user_avatar($s, 'avatar-md') ?>
+                                    <span class="pick-body">
+                                        <span class="pick-title"><?= esc($s['name']) ?></span>
+                                        <span class="pick-sub"><?= esc($s['id_number']) ?><?= $s['course'] ? ' · ' . esc(str_replace('Bachelor of Science in ', 'BS ', $s['course'])) : '' ?></span>
+                                        <span class="pick-meta">
+                                            <span class="pill pill-<?= $tier['tone'] ?>"><?= (int) $s['credits'] ?> credit<?= (int) $s['credits'] === 1 ? '' : 's' ?></span>
+                                            <span class="<?= $blocked ? 'text-danger' : '' ?>"><?= (int) $s['on_loan'] ?> of <?= $limit ?> on loan<?= $blocked ? ' · at limit' : '' ?></span>
+                                        </span>
+                                    </span>
+                                    <i class="bi bi-check-circle-fill pick-check" aria-hidden="true"></i>
+                                </label>
+                            <?php endforeach; ?>
+                            <p class="pick-empty" hidden>No student matches.</p>
+                        </div>
+                    </fieldset>
+
+                    <!-- 2. Book -->
+                    <fieldset class="col-lg-6">
+                        <legend class="issue-step"><span>2</span>Book</legend>
+                        <div class="search-icon mb-2">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input class="form-control form-control-sm" type="search" placeholder="Title, author or ISBN" data-pick-filter="issue-books" aria-label="Search books">
+                        </div>
+                        <div class="pick-list" id="issue-books" role="radiogroup" aria-label="Books">
+                            <?php foreach ($bookList as $b): $free = (int) $b['available']; ?>
+                                <label class="pick<?= $free <= 0 ? ' is-disabled' : '' ?>" data-search="<?= esc(strtolower($b['title'] . ' ' . $b['isbn'] . ' ' . $b['author'])) ?>">
+                                    <input class="visually-hidden" type="radio" name="book_id" value="<?= $b['id'] ?>" required <?= $free <= 0 ? 'disabled' : '' ?> <?= $oldBook === (string) $b['id'] ? 'checked' : '' ?>
+                                           data-name="<?= esc($b['title']) ?>" data-sub="ISBN <?= esc($b['isbn']) ?>" data-avatar="<?= esc(book_cover($b, 'cover-sm', 'S'), 'attr') ?>">
+                                    <?= book_cover($b, 'cover-sm', 'S') ?>
+                                    <span class="pick-body">
+                                        <span class="pick-title"><?= esc($b['title']) ?></span>
+                                        <span class="pick-sub"><?= esc($b['author']) ?> · ISBN <?= esc($b['isbn']) ?></span>
+                                        <span class="pick-meta"><?= availability_badge($free, (int) $b['stock_count']) ?></span>
+                                    </span>
+                                    <i class="bi bi-check-circle-fill pick-check" aria-hidden="true"></i>
+                                </label>
+                            <?php endforeach; ?>
+                            <p class="pick-empty" hidden>No book matches.</p>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="modal-footer issue-summary">
+                <div class="summary-slot" id="sumStudent"><span class="summary-empty"><i class="bi bi-person"></i>No student chosen</span></div>
+                <i class="bi bi-arrow-right summary-arrow" aria-hidden="true"></i>
+                <div class="summary-slot" id="sumBook"><span class="summary-empty"><i class="bi bi-book"></i>No book chosen</span></div>
+                <div class="ms-auto text-end">
+                    <div class="small text-muted">Due back</div>
+                    <div class="fw-semibold"><?= fmt_date(date('Y-m-d', strtotime('+' . $loanDays . ' days'))) ?></div>
+                </div>
+                <div class="w-100 d-flex flex-wrap align-items-center gap-2">
+                    <p class="form-text mb-0 issue-note">Usually a <?= $loanDays ?>-day loan. Students who have lost credits may get fewer books or a shorter loan; at 0 credits they can't borrow.</p>
+                    <div class="issue-actions">
+                        <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button>
+                        <button class="btn btn-nook" id="issueSubmit" disabled><i class="bi bi-check2 me-1"></i>Issue book</button>
+                    </div>
+                </div>
+            </div>
         </form>
     </div></div>
 </div>
@@ -333,9 +422,9 @@ $isBookTab = $tab === 'collections';
                         <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="condition" id="c-<?= $v ?>" value="<?= $v ?>" <?= $v === 'good' ? 'checked' : '' ?>><label class="form-check-label" for="c-<?= $v ?>"><?= $label ?></label></div>
                     <?php endforeach; ?>
                 </div>
-                <div class="mb-3 d-none" id="damageFee"><label class="form-label" for="damage_credits">Damage credits</label>
+                <div class="mb-3 d-none" id="damageFee"><label class="form-label" for="damage_credits">Credits to deduct for damage</label>
                     <input class="form-control" type="number" step="1" min="0" max="20" id="damage_credits" name="damage_credits" value="<?= (int) setting('damaged_credits') ?>"></div>
-                <div class="small text-danger mb-3 d-none" id="lostNote">+<?= (int) setting('lost_credits') ?> credits will be added to the student and one copy removed from stock.</div>
+                <div class="small text-danger mb-3 d-none" id="lostNote"><?= (int) setting('lost_credits') ?> credits will be deducted from the student and one copy removed from stock.</div>
                 <label class="form-label" for="r-notes">Notes</label>
                 <input class="form-control" id="r-notes" name="notes" maxlength="255" placeholder="Optional">
             </div>
@@ -348,14 +437,45 @@ $isBookTab = $tab === 'collections';
 <?= $this->section('scripts') ?>
 <?= view('partials/date_range_js') ?>
 <script>
-    // Type-to-filter for the student / book lists in the Issue dialog.
-    document.querySelectorAll('[data-filter]').forEach(function (input) {
-        const select = document.getElementById(input.dataset.filter);
-        input.addEventListener('input', function () {
-            const q = input.value.trim().toLowerCase();
-            Array.from(select.options).forEach(o => { o.hidden = q !== '' && !(o.dataset.search || o.text.toLowerCase()).includes(q) && !o.text.toLowerCase().includes(q); });
+    // Issue a book: search inside each list, show the chosen student and book, enable "Issue book".
+    (function () {
+        const form = document.getElementById('issueForm');
+        if (!form) { return; }
+        document.querySelectorAll('[data-pick-filter]').forEach(function (input) {
+            const list = document.getElementById(input.dataset.pickFilter);
+            input.addEventListener('input', function () {
+                const q = input.value.trim().toLowerCase();
+                let shown = 0;
+                list.querySelectorAll('.pick').forEach(function (p) {
+                    const hit = q === '' || p.dataset.search.includes(q);
+                    p.hidden = !hit;
+                    shown += hit ? 1 : 0;
+                });
+                list.querySelector('.pick-empty').hidden = shown > 0;
+            });
         });
-    });
+        function slot(id, radio) {
+            if (!radio) { return; }
+            const el = document.getElementById(id);
+            el.innerHTML = radio.dataset.avatar + '<span class="summary-text"><strong></strong><small></small></span>';
+            el.querySelector('strong').textContent = radio.dataset.name;
+            el.querySelector('small').textContent = radio.dataset.sub;
+        }
+        function refresh() {
+            const s = form.querySelector('input[name="user_id"]:checked');
+            const b = form.querySelector('input[name="book_id"]:checked');
+            slot('sumStudent', s);
+            slot('sumBook', b);
+            document.getElementById('issueSubmit').disabled = !(s && b);
+        }
+        form.addEventListener('change', refresh);
+        refresh();
+        document.getElementById('issueModal').addEventListener('shown.bs.modal', function () {
+            const first = this.querySelector('[data-pick-filter]');
+            if (first) { first.focus(); }
+            this.querySelectorAll('input[type="radio"]:checked').forEach(r => r.closest('.pick').scrollIntoView({ block: 'nearest' }));
+        });
+    })();
     // Return dialog.
     const rm = document.getElementById('returnModal');
     rm.addEventListener('show.bs.modal', function (e) {
@@ -372,7 +492,10 @@ $isBookTab = $tab === 'collections';
     }
     document.querySelectorAll('#returnForm input[name="condition"]').forEach(r => r.addEventListener('change', toggleCondition));
     // If a stock change was rejected (e.g. too many copies removed), reopen the dialog with the entries kept.
-    <?php if (is_head() && old('quantity') !== null): ?>
+    <?php if (old('user_id') !== null && old('quantity') === null): ?>
+    document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('issueModal')).show());
+    <?php endif; ?>
+    <?php if (old('quantity') !== null): ?>
     document.addEventListener('DOMContentLoaded', () => bootstrap.Modal.getOrCreateInstance(document.getElementById('stockModal')).show());
     <?php endif; ?>
     // Update Stock: only show reasons that match Add / Remove.

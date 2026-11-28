@@ -13,6 +13,15 @@ use RuntimeException;
 /** Student self-service pages. */
 class My extends BaseController
 {
+    /** My Loans status filter: key => [label, icon, message when empty] */
+    private const LOAN_FILTERS = [
+        'all'       => ['All', 'list-ul', 'You haven\'t borrowed any books yet.'],
+        'active'    => ['On loan', 'book', 'You have no books on loan right now.'],
+        'due_today' => ['Due today', 'calendar-event', 'Nothing is due today.'],
+        'overdue'   => ['Overdue', 'alarm', 'No overdue books. Well done!'],
+        'returned'  => ['Returned', 'check2-circle', 'You haven\'t returned any books yet.'],
+    ];
+
     private function me(): int
     {
         return (int) session()->get('userId');
@@ -22,7 +31,12 @@ class My extends BaseController
     {
         $circ  = new CirculationService();
         $model = new BorrowingModel();
-        $rows  = $model->filtered(['status' => 'all', 'user_id' => $this->me()])->paginate(15);
+        // Status filter: all | active (on loan) | due_today | overdue | returned
+        $status = (string) $this->request->getGet('status');
+        if (! array_key_exists($status, self::LOAN_FILTERS)) {
+            $status = 'all';
+        }
+        $rows = $model->filtered(['status' => $status, 'user_id' => $this->me()])->paginate(15);
         foreach ($rows as &$l) {
             [$l['days_late'], $l['est_credits']] = $l['status'] === 'borrowed' ? $circ->overdueCredits($l['due_date'], date('Y-m-d')) : [0, 0];
         }
@@ -45,7 +59,20 @@ class My extends BaseController
             }
         }
 
-        return view('my/loans', ['rows' => $rows, 'pager' => $model->pager, 'requests' => $requests, 'pendingReturns' => $pendingReturns]);
+        $today  = date('Y-m-d');
+        $mine   = fn () => (new BorrowingModel())->where('user_id', $this->me());
+        $counts = [
+            'all'       => $mine()->countAllResults(),
+            'active'    => $mine()->where('status', 'borrowed')->countAllResults(),
+            'due_today' => $mine()->where('status', 'borrowed')->where('due_date', $today)->countAllResults(),
+            'overdue'   => $mine()->where('status', 'borrowed')->where('due_date <', $today)->countAllResults(),
+            'returned'  => $mine()->where('status', 'returned')->countAllResults(),
+        ];
+
+        return view('my/loans', [
+            'rows' => $rows, 'pager' => $model->pager, 'requests' => $requests, 'pendingReturns' => $pendingReturns,
+            'status' => $status, 'counts' => $counts, 'filters' => self::LOAN_FILTERS,
+        ]);
     }
 
     /** "Request return" for a book the student has. */

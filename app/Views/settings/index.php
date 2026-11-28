@@ -41,11 +41,10 @@ $groups = [
             </div>
             <?php if ($group === 'Credits'): ?>
                 <div class="small text-muted mt-3">
-                    <strong>Standing levels</strong> (a student starts at 0; 20 is the maximum):
+                    <strong>Standing levels</strong> (every student starts with 20 credits; at 0 they are blocked):
                     <ul class="mb-0 mt-1">
-                        <?php foreach (\App\Libraries\CreditPolicy::TIERS as $i => $t):
-                            $to = \App\Libraries\CreditPolicy::TIERS[$i + 1][0] ?? null; ?>
-                            <li><?= $to === null ? $t[0] : $t[0] . '–' . ($to - 1) ?> credits · <strong><?= esc($t[2]) ?></strong>: <?= esc($t[6]) ?></li>
+                        <?php foreach (\App\Libraries\CreditPolicy::TIERS as $i => $t): ?>
+                            <li><?= \App\Libraries\CreditPolicy::rangeLabel($i) ?> credits · <strong><?= esc($t[2]) ?></strong>: <?= esc($t[6]) ?></li>
                         <?php endforeach; ?>
                     </ul>
                 </div>

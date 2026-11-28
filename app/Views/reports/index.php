@@ -51,8 +51,8 @@ $period  = match (true) {
         ['Returned late', $summary['late_returns'], 'alarm', 'warn'],
         ['Reported lost', $summary['lost'], 'question-octagon', 'bad'],
         ['Students who borrowed', $summary['borrowers'], 'people', ''],
-        ['Credits added', $summary['credits_added'], 'shield-exclamation', 'warn'],
-        ['Credits reduced', $summary['credits_reduced'], 'shield-check', 'good'],
+        ['Credits deducted', $summary['credits_deducted'], 'shield-exclamation', 'warn'],
+        ['Credits restored', $summary['credits_restored'], 'shield-check', 'good'],
     ] as [$label, $value, $icon, $tone]): ?>
         <div class="col-6 col-lg-3"><div class="stat"><span class="icon <?= $tone ?>"><i class="bi bi-<?= $icon ?>"></i></span>
             <span><span class="value d-block"><?= $value ?></span><span class="label"><?= $label ?></span></span></div></div>
@@ -78,10 +78,10 @@ $period  = match (true) {
         </div>
         <div class="col-lg-6">
             <div class="panel h-100">
-                <h3 class="panel-title">Credits added per month</h3>
-                <div class="vbars" role="img" aria-label="Credits added per month, last six months">
+                <h3 class="panel-title">Credits deducted per month</h3>
+                <div class="vbars" role="img" aria-label="Credits deducted per month, last six months">
                     <?php foreach ($months as $m): ?>
-                        <div class="col" title="<?= $m['label'] ?>: <?= $m['credits'] ?> credits added">
+                        <div class="col" title="<?= $m['label'] ?>: <?= $m['credits'] ?> credits deducted">
                             <span class="v"><?= $m['credits'] ?></span>
                             <span class="bar" style="height: <?= round($m['credits'] / $maxCredits * 100) ?>%"></span>
                             <span class="m"><?= $m['label'] ?></span>
@@ -108,7 +108,7 @@ $period  = match (true) {
             <?php else: $max = max(array_column($topBooks, 'n')); ?>
                 <div class="hbar">
                     <?php foreach ($topBooks as $b): ?>
-                        <span class="name" title="<?= esc($b['title']) ?> by <?= esc($b['author']) ?>"><?= esc($b['title']) ?></span>
+                        <span class="name book-cell" title="<?= esc($b['title']) ?> by <?= esc($b['author']) ?> · ISBN <?= esc($b['isbn']) ?>"><?= book_cover($b, 'cover-xs', 'S') ?><span class="text-truncate"><?= esc($b['title']) ?><span class="d-block small text-muted">ISBN <?= esc($b['isbn']) ?></span></span></span>
                         <span class="track" title="<?= esc($b['title']) ?>: borrowed <?= (int) $b['n'] ?> time(s)"><span class="fill d-block" style="width: <?= round($b['n'] / $max * 100) ?>%"></span></span>
                         <span class="num"><?= (int) $b['n'] ?></span>
                     <?php endforeach; ?>
@@ -166,7 +166,7 @@ $period  = match (true) {
                 <div class="table-responsive"><table class="table table-nook">
                     <thead><tr><th>Student</th><th>Book</th><th>Due</th><th class="text-end">Days late</th></tr></thead>
                     <tbody><?php foreach ($overdue as $l): ?>
-                        <tr><td><?= esc($l['borrower_name']) ?><div class="sub"><?= esc($l['borrower_id_number']) ?></div></td><td><?= esc($l['title']) ?></td>
+                        <tr><td><?= esc($l['borrower_name']) ?><div class="sub"><?= esc($l['borrower_id_number']) ?></div></td><td><div class="book-cell"><?= book_cover($l, 'cover-sm', 'S') ?><div><?= esc($l['title']) ?><span class="d-block small text-muted">ISBN <?= esc($l['isbn']) ?></span></div></div></td>
                             <td><?= $dmy($l['due_date']) ?></td><td class="text-end"><?= (int) floor((strtotime(date('Y-m-d')) - strtotime($l['due_date'])) / 86400) ?></td></tr>
                     <?php endforeach; ?></tbody>
                 </table></div>

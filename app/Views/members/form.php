@@ -31,14 +31,23 @@
             <div class="col-md-5">
                 <label class="form-label" for="year_level">Year level *</label>
                 <select class="form-select" id="year_level" name="year_level" required>
-                    <?php $yl = old('year_level', $user['year_level'] ?? '1st Year'); foreach (['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', 'Graduate'] as $y): ?>
+                    <?php $yl = old('year_level', $user['year_level'] ?? '1st Year'); // "Graduate" is not offered for new students; it stays available when editing someone already marked Graduate.
+                    $years = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
+                    if ($editing && $yl === 'Graduate') { $years[] = 'Graduate'; }
+                    foreach ($years as $y): ?>
                         <option <?= $yl === $y ? 'selected' : '' ?>><?= $y ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="password"><?= $editing ? 'Reset password' : 'Temporary password *' ?></label>
-                <input class="form-control" type="text" id="password" name="password" minlength="8" maxlength="72" autocomplete="new-password" <?= $editing ? 'placeholder="Leave blank to keep current"' : 'required' ?>>
+                <!-- Hidden while typing; the eye button shows or hides it -->
+                <div class="position-relative">
+                    <input class="form-control pe-5" type="password" id="password" name="password" minlength="8" maxlength="72" autocomplete="new-password" <?= $editing ? 'placeholder="Leave blank to keep current"' : 'required' ?>>
+                    <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-1 border-0"
+                            onclick="const p=document.getElementById('password');const show=p.type==='password';p.type=show?'text':'password';this.firstElementChild.className='bi bi-'+(show?'eye-slash':'eye');this.setAttribute('aria-label',show?'Hide password':'Show password')"
+                            aria-label="Show password" aria-controls="password"><i class="bi bi-eye"></i></button>
+                </div>
                 <div class="form-text">At least 8 characters. The student can change it under My Account.</div>
             </div>
         </div>

@@ -2,7 +2,6 @@
 <?= $this->section('title') ?><?= $layout === 'layouts/app' ? 'Browse Books' : 'Books' ?><?= $this->endSection() ?>
 
 <?php
-$spines = ['#6e7d4e', '#9a5530', '#4c6488', '#8e3b45', '#55342b', '#7a6a3a'];
 $public = $layout === 'layouts/public';
 ?>
 <?= $this->section('content') ?>
@@ -43,10 +42,10 @@ $public = $layout === 'layouts/public';
                 <div class="col-sm-6 col-xl-4">
                     <div class="book-card">
                         <div class="d-flex gap-3 mb-2">
-                            <div class="spine" style="background: <?= $spines[$b['id'] % count($spines)] ?>" aria-hidden="true"><?= esc(mb_substr($b['title'], 0, 1)) ?></div>
+                            <?= book_cover($b, 'cover-card') ?>
                             <div class="min-w-0">
                                 <h3><a class="text-reset text-decoration-none" href="<?= site_url('catalog/' . $b['id']) ?>"><?= esc($b['title']) ?></a></h3>
-                                <div class="meta"><?= esc($b['author']) ?></div>
+                                <div class="meta"><?= esc($b['author']) ?><?= $b['edition'] ? ' · ' . esc($b['edition']) : '' ?></div>
                                 <div class="meta"><?= esc($b['category_name'] ?? 'Uncategorized') ?><?= $b['publication_year'] ? ' · ' . esc($b['publication_year']) : '' ?></div>
                             </div>
                         </div>

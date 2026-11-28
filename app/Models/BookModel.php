@@ -18,8 +18,8 @@ class BookModel extends Model
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
     protected $allowedFields = [
-        'title', 'isbn', 'author', 'category_id', 'course', 'publisher',
-        'publication_year', 'shelf_location', 'stock_count', 'description',
+        'title', 'isbn', 'author', 'edition', 'category_id', 'course', 'publisher',
+        'publication_year', 'shelf_location', 'stock_count', 'description', 'cover',
     ];
     protected $useTimestamps = true;
 
@@ -75,6 +75,7 @@ class BookModel extends Model
         }
         // Course the book is meant for (one of the four programs, or "Other").
         apply_course_filter($this, 'books.course', (string) ($f['course'] ?? ''));
+        apply_shelf_filter($this, 'books.shelf_location', (string) ($f['shelf'] ?? ''));
         if (! empty($f['added_from'])) {
             $this->where('books.created_at >=', $f['added_from'] . ' 00:00:00');
         }
@@ -160,7 +161,7 @@ class BookModel extends Model
     /** Short list for circulation drop-downs. */
     public function forSelect(): array
     {
-        return $this->select('books.id, books.title, books.isbn, books.author, books.category_id, books.course', false)
+        return $this->select('books.id, books.title, books.isbn, books.author, books.category_id, books.course, books.stock_count, books.cover', false)
             ->select(self::availableSql() . ' AS available', false)
             ->orderBy('books.title', 'ASC')
             ->findAll();

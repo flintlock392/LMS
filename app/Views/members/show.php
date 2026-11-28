@@ -44,7 +44,7 @@
                 <div class="table-responsive"><table class="table table-nook">
                     <thead><tr><th>Book</th><th>Borrowed</th><th>Due</th><th>Returned</th><th>Status</th></tr></thead>
                     <tbody><?php foreach ($loans as $l): ?>
-                        <tr><td><?= esc($l['title']) ?></td><td><?= fmt_date($l['borrowed_at']) ?></td><td><?= fmt_date($l['due_date']) ?></td>
+                        <tr><td><div class="book-cell"><?= book_cover($l, 'cover-sm', 'S') ?><div><?= esc($l['title']) ?><span class="d-block small text-muted">ISBN <?= esc($l['isbn']) ?></span></div></div></td><td><?= fmt_date($l['borrowed_at']) ?></td><td><?= fmt_date($l['due_date']) ?></td>
                             <td><?= fmt_date($l['returned_at']) ?></td><td><?= status_badge($l['status'], $l['due_date']) ?></td></tr>
                     <?php endforeach; ?></tbody>
                 </table></div>
@@ -56,13 +56,13 @@
                 <a class="ms-auto small" href="<?= site_url('credits?tab=history&q=' . urlencode($user['id_number'])) ?>">Open in <?= esc(module_title('credits')) ?></a></h3>
             <p class="small mb-3"><?= credit_badge($user['credits']) ?> <span class="text-muted ms-1"><?= esc($t['explain']) ?></span></p>
             <?php if (! $creditLog): ?>
-                <div class="empty"><i class="bi bi-emoji-smile"></i>No credits so far.</div>
+                <div class="empty"><i class="bi bi-emoji-smile"></i>No credit changes yet. This student still has all their credits.</div>
             <?php else: ?>
                 <div class="table-responsive"><table class="table table-nook">
                     <thead><tr><th>Date</th><th>Change</th><th>Reason</th><th>Balance</th></tr></thead>
                     <tbody><?php foreach ($creditLog as $l): $up = $l['change'] > 0; ?>
                         <tr><td><?= fmt_date($l['created_at']) ?></td>
-                            <td><span class="pill <?= $up ? 'pill-danger' : 'pill-success' ?>"><?= $up ? '+' : '−' ?><?= abs((int) $l['change']) ?></span></td>
+                            <td><span class="pill <?= $up ? 'pill-success' : 'pill-danger' ?>"><?= $up ? '+' : '−' ?><?= abs((int) $l['change']) ?></span></td>
                             <td><?= esc(\App\Models\CreditLogModel::LABELS[$l['reason']] ?? $l['reason']) ?><div class="sub"><?= esc($l['notes'] ?: ($l['title'] ?? '')) ?></div></td>
                             <td><?= (int) $l['balance_after'] ?></td></tr>
                     <?php endforeach; ?></tbody>

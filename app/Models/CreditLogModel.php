@@ -7,8 +7,8 @@ use CodeIgniter\Model;
 /** Every change to a student's credits. */
 class CreditLogModel extends Model
 {
-    /** Reasons that add credits (violations). */
-    public const ADD_REASONS = [
+    /** Reasons that deduct credits (violations). */
+    public const DEDUCT_REASONS = [
         'overdue'    => 'Late return',
         'damaged'    => 'Damaged book',
         'lost'       => 'Lost book',
@@ -16,15 +16,15 @@ class CreditLogModel extends Model
         'other'      => 'Other violation',
     ];
 
-    /** Reasons that reduce credits. */
-    public const REDUCE_REASONS = [
+    /** Reasons that restore credits. */
+    public const RESTORE_REASONS = [
         'appeal'          => 'Appeal approved',
         'library_service' => 'Helped in the library',
         'settlement'      => 'Status settled by Head Librarian',
         'correction'      => 'Correction',
     ];
 
-    public const LABELS = self::ADD_REASONS + self::REDUCE_REASONS;
+    public const LABELS = self::DEDUCT_REASONS + self::RESTORE_REASONS;
 
     protected $table         = 'credit_logs';
     protected $primaryKey    = 'id';
@@ -33,7 +33,7 @@ class CreditLogModel extends Model
     protected $useTimestamps = true;
     protected $updatedField  = '';
 
-    /** History with student, staff and book names. Filters: q, user_id, direction (added|reduced), from, to */
+    /** History with student, staff and book names. Filters: q, user_id, direction (deducted|restored), from, to */
     public function filtered(array $f): self
     {
         $this->select('credit_logs.*, u.name AS student_name, u.id_number AS student_id_number, s.name AS staff_name, books.title')
@@ -45,10 +45,10 @@ class CreditLogModel extends Model
         if (! empty($f['user_id'])) {
             $this->where('credit_logs.user_id', (int) $f['user_id']);
         }
-        if (($f['direction'] ?? '') === 'added') {
-            $this->where('credit_logs.change >', 0);
-        } elseif (($f['direction'] ?? '') === 'reduced') {
+        if (($f['direction'] ?? '') === 'deducted') {
             $this->where('credit_logs.change <', 0);
+        } elseif (($f['direction'] ?? '') === 'restored') {
+            $this->where('credit_logs.change >', 0);
         }
         if (! empty($f['q'])) {
             $this->groupStart()->like('u.name', $f['q'])->orLike('u.id_number', $f['q'])->orLike('books.title', $f['q'])->groupEnd();

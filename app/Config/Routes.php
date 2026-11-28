@@ -65,7 +65,6 @@ $routes->group('', ['filter' => $head], static function ($routes) {
     $routes->post('members/(:num)/status', 'Members::toggleStatus/$1');
     $routes->post('members/(:num)/archive', 'Members::archive/$1');
 
-    $routes->post('inventory/adjust', 'Inventory::adjust');
 
     // Credit Management: add / reduce credits, handle appeals (Head Librarian only)
     $routes->post('credits/adjust', 'Credits::adjust');
@@ -106,6 +105,7 @@ $routes->group('', ['filter' => $staff], static function ($routes) {
     $routes->post('requests/(:num)/receive', 'Requests::receive/$1');
     $routes->post('requests/(:num)/decline', 'Requests::decline/$1');
     $routes->post('circulation/(:num)/return', 'Circulation::receive/$1');
+    $routes->post('inventory/adjust', 'Inventory::adjust');   // Update Stock: add / remove copies (Head Librarian and Librarian Staff)
 
     $routes->get('suggest', 'Suggest::index');                       // search-box suggestions (JSON)
 

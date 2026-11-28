@@ -29,11 +29,11 @@
         You can't borrow books right now (<?= $credits ?> credits). <a href="<?= site_url('my/credits') ?>">Appeal to the Head Librarian</a> to settle your status.</div>
 <?php elseif ($tier['key'] !== 'good'): ?>
     <div class="alert alert-warning"><i class="bi bi-shield-exclamation me-1"></i>
-        <strong><?= esc($tier['label']) ?></strong> (<?= $credits ?> credits): <?= esc($tier['explain']) ?> <a href="<?= site_url('my/credits') ?>">How to lower your credits</a></div>
+        <strong><?= esc($tier['label']) ?></strong> (<?= $credits ?> credits): <?= esc($tier['explain']) ?> <a href="<?= site_url('my/credits') ?>">How to get credits back</a></div>
 <?php endif; ?>
 <?php if ($estimated > 0): ?>
     <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>
-        You have overdue books. Returning them today adds about <strong><?= $estimated ?> credit<?= $estimated === 1 ? '' : 's' ?></strong>, and it grows each day.</div>
+        You have overdue books: <strong><?= $estimated ?> credit<?= $estimated === 1 ? '' : 's' ?></strong> deducted so far, and more each day until you return them.</div>
 <?php endif; ?>
 
 <div class="row g-4">
@@ -50,11 +50,11 @@
                         <tbody>
                         <?php foreach ($loans as $l): ?>
                             <tr>
-                                <td><?= esc($l['title']) ?><div class="sub"><?= esc($l['author']) ?></div></td>
+                                <td><div class="book-cell"><?= book_cover($l, 'cover-sm', 'S') ?><div><?= esc($l['title']) ?><div class="sub"><?= esc($l['author']) ?></div></div></div></td>
                                 <td><?= fmt_date($l['borrowed_at']) ?></td>
                                 <td><?= fmt_date($l['due_date']) ?></td>
                                 <td><?= status_badge('borrowed', $l['due_date']) ?>
-                                    <?php if ($l['days_late'] > 0): ?><div class="sub"><?= $l['days_late'] ?> day(s) late · ~+<?= $l['est_credits'] ?> credits</div><?php endif; ?></td>
+                                    <?php if ($l['days_late'] > 0): ?><div class="sub"><?= $l['days_late'] ?> day(s) late · −<?= $l['est_credits'] ?> credits</div><?php endif; ?></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -68,7 +68,7 @@
             <h2 class="panel-title"><i class="bi bi-stars"></i> New in the collection</h2>
             <?php foreach ($newBooks as $b): ?>
                 <a class="d-flex justify-content-between align-items-center py-2 border-bottom text-decoration-none text-reset" href="<?= site_url('catalog/' . $b['id']) ?>">
-                    <span><?= esc($b['title']) ?><span class="d-block small text-muted"><?= esc($b['author']) ?></span></span>
+                    <div class="book-cell"><?= book_cover($b, 'cover-sm', 'S') ?><div><?= esc($b['title']) ?><span class="d-block small text-muted"><?= esc($b['author']) ?></span></div></div>
                     <?= availability_badge((int) $b['available'], (int) $b['stock_count']) ?>
                 </a>
             <?php endforeach; ?>

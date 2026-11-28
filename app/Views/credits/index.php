@@ -16,14 +16,13 @@ $tabs = [
 <!-- How many students are at each standing level (click to filter) -->
 <div class="row g-3 mb-3">
     <?php foreach (CreditPolicy::TIERS as $i => $t):
-        $to   = CreditPolicy::TIERS[$i + 1][0] ?? null;
         $icon = ['good' => 'emoji-smile', 'warning' => 'exclamation-circle', 'probation' => 'exclamation-triangle', 'final' => 'exclamation-octagon', 'blocked' => 'slash-circle'][$t[1]];
         $tone = ['good' => 'good', 'warning' => 'warn', 'probation' => 'warn', 'final' => 'bad', 'blocked' => 'bad'][$t[1]]; ?>
         <div class="col-6 col-md-4 col-xl">
             <a class="stat" href="<?= site_url('credits?tab=students&tier=' . $t[1]) ?>" title="<?= esc($t[6]) ?>">
                 <span class="icon <?= $tone ?>"><i class="bi bi-<?= $icon ?>"></i></span>
                 <span><span class="value d-block"><?= $tiers[$t[1]] ?></span>
-                    <span class="label"><?= esc($t[2]) ?> · <?= $to === null ? $t[0] : $t[0] . '–' . ($to - 1) ?></span></span>
+                    <span class="label"><?= esc($t[2]) ?> · <?= CreditPolicy::rangeLabel($i) ?></span></span>
             </a>
         </div>
     <?php endforeach; ?>
@@ -38,13 +37,13 @@ $tabs = [
         <?php endforeach; ?>
     </nav>
     <?php if (is_head()): ?>
-        <button class="btn btn-nook ms-auto" type="button" data-bs-toggle="modal" data-bs-target="#adjustModal"><i class="bi bi-plus-slash-minus me-1"></i>Add / reduce credits</button>
+        <button class="btn btn-nook ms-auto" type="button" data-bs-toggle="modal" data-bs-target="#adjustModal"><i class="bi bi-plus-slash-minus me-1"></i>Deduct / restore credits</button>
     <?php endif; ?>
 </div>
 
 <div class="panel">
     <?php if (! is_head()): ?>
-        <p class="small text-muted"><i class="bi bi-eye me-1"></i>View only. Credits are added automatically for late, damaged or lost books; only the Head Librarian can reduce them.</p>
+        <p class="small text-muted"><i class="bi bi-eye me-1"></i>View only. Every student starts with <?= CreditPolicy::MAX ?> credits. Credits are deducted automatically for late, damaged or lost books; only the Head Librarian can restore them.</p>
     <?php endif; ?>
 
     <?php if ($tab === 'students'): ?>
@@ -69,7 +68,7 @@ $tabs = [
                             <div class="sub"><?= esc($u['id_number']) ?><?= $u['course'] ? ' · ' . esc($u['course']) : '' ?></div></td>
                         <td>
                             <?= credit_badge($u['credits']) ?>
-                            <div class="credit-meter mt-1" aria-hidden="true"><span style="width: <?= (int) $u['credits'] / CreditPolicy::MAX * 100 ?>%"></span></div>
+                            <div class="credit-meter mt-1 tone-<?= $t['tone'] ?>" aria-hidden="true" title="<?= (int) $u['credits'] ?> of <?= CreditPolicy::MAX ?> credits"><span style="width: <?= (int) $u['credits'] / CreditPolicy::MAX * 100 ?>%"></span></div>
                         </td>
                         <td><?= $t['key'] === 'blocked' ? '<span class="text-danger fw-semibold">No books</span>' : CreditPolicy::maxBooks((int) $u['credits'], $maxLoans) . ' book(s)' ?>
                             <?php if ($t['loanFactor'] < 1 && $t['loanFactor'] > 0): ?><div class="sub">Shorter loans</div><?php endif; ?></td>
@@ -77,7 +76,7 @@ $tabs = [
                         <td class="actions">
                             <?php if (is_head()): ?>
                                 <button class="btn btn-sm btn-outline-nook" type="button" data-bs-toggle="modal" data-bs-target="#adjustModal"
-                                        data-user-id="<?= $u['id'] ?>" data-user-label="<?= esc($u['name'] . ' (' . $u['id_number'] . ')') ?>"><i class="bi bi-plus-slash-minus"></i> Adjust</button>
+                                        data-user-id="<?= $u['id'] ?>" data-user-label="<?= esc($u['name'] . ' (' . $u['id_number'] . ')') ?>" data-credits="<?= (int) $u['credits'] ?>"><i class="bi bi-plus-slash-minus"></i> Adjust</button>
                             <?php endif; ?>
                             <a class="btn btn-sm btn-outline-nook" href="<?= site_url('credits?tab=history&q=' . urlencode($u['id_number'])) ?>" title="History"><i class="bi bi-clock-history"></i></a>
                         </td>
@@ -108,14 +107,15 @@ $tabs = [
                     </div>
                     <p class="appeal-message mt-2 mb-2"><?= nl2br(esc($a['message'])) ?></p>
                     <?php if ($a['status'] !== 'pending'): ?>
-                        <div class="sub"><?= $a['status'] === 'approved' ? 'Removed ' . (int) $a['reduced_by'] . ' credit(s)' : 'Declined' ?> by <?= esc($a['handled_by_name'] ?? '—') ?> on <?= fmt_date($a['handled_at'], true) ?><?= $a['response'] ? ' · "' . esc($a['response']) . '"' : '' ?></div>
+                        <div class="sub"><?= $a['status'] === 'approved' ? 'Restored ' . (int) $a['reduced_by'] . ' credit(s)' : 'Declined' ?> by <?= esc($a['handled_by_name'] ?? '—') ?> on <?= fmt_date($a['handled_at'], true) ?><?= $a['response'] ? ' · "' . esc($a['response']) . '"' : '' ?></div>
                     <?php elseif (is_head()): ?>
                         <div class="row g-2 align-items-end">
                             <form class="col-lg-7 d-flex flex-wrap gap-2 align-items-end" method="post" action="<?= site_url('credits/appeals/' . $a['id'] . '/approve') ?>"
-                                  data-confirm="Approve <?= esc($a['student_name']) ?>'s appeal and remove the credits?">
+                                  data-confirm="Approve <?= esc($a['student_name']) ?>'s appeal and restore the credits?">
                                 <?= csrf_field() ?>
-                                <div><label class="form-label small mb-1" for="r<?= $a['id'] ?>">Remove</label>
-                                    <input class="form-control form-control-sm" type="number" id="r<?= $a['id'] ?>" name="reduce_by" min="1" max="<?= (int) $a['credits'] ?>" value="<?= min(5, (int) $a['credits']) ?>" style="width:90px" required></div>
+                                <?php $missing = CreditPolicy::MAX - (int) $a['credits']; ?>
+                                <div><label class="form-label small mb-1" for="r<?= $a['id'] ?>">Restore</label>
+                                    <input class="form-control form-control-sm" type="number" id="r<?= $a['id'] ?>" name="reduce_by" min="1" max="<?= max(1, $missing) ?>" value="<?= max(1, min(5, $missing)) ?>" style="width:90px" required></div>
                                 <input class="form-control form-control-sm flex-grow-1" name="response" maxlength="200" placeholder="Note to the student (optional)" style="min-width:160px">
                                 <button class="btn btn-sm btn-nook"><i class="bi bi-check2 me-1"></i>Approve</button>
                             </form>
@@ -139,9 +139,9 @@ $tabs = [
             <input type="hidden" name="tab" value="history">
             <input class="form-control form-control-sm" type="search" name="q" value="<?= esc($q) ?>" placeholder="Student name, number or book" aria-label="Search history" data-suggest="students">
             <select class="form-select form-select-sm" name="direction" aria-label="Change" style="max-width:180px">
-                <option value="">Added and reduced</option>
-                <option value="added" <?= $direction === 'added' ? 'selected' : '' ?>>Added only</option>
-                <option value="reduced" <?= $direction === 'reduced' ? 'selected' : '' ?>>Reduced only</option>
+                <option value="">Deducted and restored</option>
+                <option value="deducted" <?= $direction === 'deducted' ? 'selected' : '' ?>>Deducted only</option>
+                <option value="restored" <?= $direction === 'restored' ? 'selected' : '' ?>>Restored only</option>
             </select>
             <button class="btn btn-sm btn-nook" data-apply><i class="bi bi-funnel me-1"></i>Apply</button>
             <?php if ($q !== '' || $direction !== ''): ?><a class="btn-clear" href="<?= site_url('credits?tab=history') ?>"><i class="bi bi-x-circle"></i>Clear filters</a><?php endif; ?>
@@ -155,7 +155,7 @@ $tabs = [
                     <tr>
                         <td><?= fmt_date($l['created_at']) ?><div class="sub"><?= date('g:i A', strtotime($l['created_at'])) ?></div></td>
                         <td><a class="text-reset" href="<?= site_url('members/' . $l['user_id']) ?>"><?= esc($l['student_name']) ?></a><div class="sub"><?= esc($l['student_id_number']) ?></div></td>
-                        <td><span class="pill <?= $up ? 'pill-danger' : 'pill-success' ?>"><?= $up ? '+' : '−' ?><?= abs((int) $l['change']) ?></span>
+                        <td><span class="pill <?= $up ? 'pill-success' : 'pill-danger' ?>"><?= $up ? '+' : '−' ?><?= abs((int) $l['change']) ?></span>
                             <div class="sub mt-1">Balance: <?= (int) $l['balance_after'] ?></div></td>
                         <td class="fw-medium"><?= esc(CreditLogModel::LABELS[$l['reason']] ?? $l['reason']) ?>
                             <div class="sub fw-normal"><?= esc($l['notes'] ?: ($l['title'] ?? '')) ?></div></td>
@@ -169,41 +169,43 @@ $tabs = [
 </div>
 
 <?php if (is_head()): ?>
-<!-- Add / reduce credits -->
+<!-- Deduct / restore credits -->
 <div class="modal fade" id="adjustModal" tabindex="-1" aria-labelledby="adjustTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 440px"><div class="modal-content adjust-modal">
         <form method="post" action="<?= site_url('credits/adjust') ?>">
             <?= csrf_field() ?>
             <div class="modal-header border-0 pb-0">
-                <h2 class="modal-title panel-title mb-0" id="adjustTitle"><i class="bi bi-plus-slash-minus"></i> Add / reduce credits</h2>
+                <h2 class="modal-title panel-title mb-0" id="adjustTitle"><i class="bi bi-plus-slash-minus"></i> Deduct / restore credits</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label" for="adjust-student">Student</label>
                     <input class="form-control" type="search" id="adjust-student" placeholder="Type a name or student number"
                            data-suggest="students" data-suggest-pick="adjust-user-id">
-                    <input type="hidden" id="adjust-user-id" name="user_id"></div>
+                    <input type="hidden" id="adjust-user-id" name="user_id">
+                    <div class="form-text" id="cr-available" aria-live="polite">Choose a student to see how many credits they have.</div></div>
                 <div class="mb-3">
-                    <div class="btn-group w-100" role="group" aria-label="Add or reduce">
-                        <input type="radio" class="btn-check" name="direction" id="cr-add" value="add" checked>
-                        <label class="btn btn-outline-danger" for="cr-add"><i class="bi bi-plus-lg"></i> Add credits</label>
-                        <input type="radio" class="btn-check" name="direction" id="cr-reduce" value="reduce">
-                        <label class="btn btn-outline-success" for="cr-reduce"><i class="bi bi-dash-lg"></i> Reduce credits</label>
+                    <div class="btn-group w-100" role="group" aria-label="Deduct or restore">
+                        <input type="radio" class="btn-check" name="direction" id="cr-deduct" value="deduct" checked>
+                        <label class="btn btn-outline-danger" for="cr-deduct"><i class="bi bi-dash-lg"></i> Deduct credits</label>
+                        <input type="radio" class="btn-check" name="direction" id="cr-restore" value="restore">
+                        <label class="btn btn-outline-success" for="cr-restore"><i class="bi bi-plus-lg"></i> Restore credits</label>
                     </div>
                 </div>
                 <div class="row g-2 mb-3">
                     <div class="col-4"><label class="form-label" for="cr-amount">Credits</label>
-                        <input class="form-control" type="number" id="cr-amount" name="amount" min="1" max="<?= CreditPolicy::MAX ?>" value="1" required></div>
+                        <input class="form-control" type="number" id="cr-amount" name="amount" min="1" max="<?= CreditPolicy::MAX ?>" value="1" required aria-describedby="cr-limit">
+                        <div class="form-text" id="cr-limit"></div></div>
                     <div class="col-8"><label class="form-label" for="cr-reason">Reason</label>
                         <select class="form-select" id="cr-reason" name="reason" required>
-                            <optgroup label="Add" data-dir="add"><?php foreach (CreditLogModel::ADD_REASONS as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></optgroup>
-                            <optgroup label="Reduce" data-dir="reduce"><?php foreach (CreditLogModel::REDUCE_REASONS as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></optgroup>
+                            <optgroup label="Deduct" data-dir="deduct"><?php foreach (CreditLogModel::DEDUCT_REASONS as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></optgroup>
+                            <optgroup label="Restore" data-dir="restore"><?php foreach (CreditLogModel::RESTORE_REASONS as $k => $v): ?><option value="<?= $k ?>"><?= $v ?></option><?php endforeach; ?></optgroup>
                         </select></div>
                 </div>
                 <div class="mb-3"><label class="form-label" for="cr-notes">Notes</label>
                     <input class="form-control" id="cr-notes" name="notes" maxlength="255" placeholder="e.g. 3 hours shelving books on Nov 24"></div>
                 <button class="btn btn-nook w-100">Save</button>
-                <p class="form-text mb-0 mt-2">Credits stay between 0 and <?= CreditPolicy::MAX ?>. At <?= CreditPolicy::MAX ?> the student is blocked from borrowing; reducing their credits settles the status.</p>
+                <p class="form-text mb-0 mt-2">Credits stay between 0 and <?= CreditPolicy::MAX ?>. Every student starts with <?= CreditPolicy::MAX ?>; at 0 they are blocked from borrowing, and restoring credits settles the status.</p>
             </div>
         </form>
     </div></div>
@@ -217,7 +219,7 @@ $tabs = [
     (function () {
         const modal = document.getElementById('adjustModal');
         const reason = document.getElementById('cr-reason');
-        // Only show reasons that match "Add" or "Reduce".
+        // Only show reasons that match "Deduct" or "Restore".
         function sync() {
             const dir = document.querySelector('input[name="direction"]:checked').value;
             reason.querySelectorAll('optgroup').forEach(g => { g.hidden = g.dataset.dir !== dir; });
@@ -226,13 +228,48 @@ $tabs = [
                 reason.value = reason.querySelector('optgroup[data-dir="' + dir + '"] option').value;
             }
         }
-        document.querySelectorAll('input[name="direction"]').forEach(r => r.addEventListener('change', sync));
+        // The most that can be deducted is what the student has left;
+        // the most that can be restored is what is missing to reach the full amount.
+        const MAX = <?= CreditPolicy::MAX ?>;
+        const amount = document.getElementById('cr-amount'), limit = document.getElementById('cr-limit');
+        const avail = document.getElementById('cr-available'), save = modal.querySelector('form button.btn-nook');
+        let credits = null;
+        function cap() {
+            const dir = document.querySelector('input[name="direction"]:checked').value;
+            if (credits === null) {
+                amount.max = MAX; limit.textContent = ''; save.disabled = false;
+                avail.textContent = 'Choose a student to see how many credits they have.';
+                return;
+            }
+            avail.innerHTML = 'Available: <strong>' + credits + ' of ' + MAX + '</strong> credits';
+            const most = dir === 'deduct' ? credits : MAX - credits;
+            amount.max = Math.max(1, most);
+            if (most <= 0) {
+                limit.textContent = dir === 'deduct' ? 'No credits left to deduct.' : 'Already has all ' + MAX + ' credits.';
+                limit.classList.add('text-danger'); save.disabled = true;
+                return;
+            }
+            limit.classList.remove('text-danger'); save.disabled = false;
+            limit.textContent = 'Up to ' + most;
+            if (+amount.value > most) { amount.value = most; }
+            if (+amount.value < 1) { amount.value = 1; }
+        }
+        function setStudent(c) { credits = (c === null || c === undefined || c === '') ? null : parseInt(c, 10); cap(); }
+        document.querySelectorAll('input[name="direction"]').forEach(r => r.addEventListener('change', function () { sync(); cap(); }));
+        amount.addEventListener('input', function () { if (amount.max && +amount.value > +amount.max) { amount.value = amount.max; } });
+        document.getElementById('adjust-user-id').addEventListener('suggest:pick', e => setStudent(e.detail ? e.detail.credits : null));
         sync();
-        // "Adjust" on a row pre-fills the student.
+        cap();
+        // "Adjust" on a row pre-fills the student and their balance.
         modal.addEventListener('show.bs.modal', function (e) {
             const b = e.relatedTarget;
             const box = document.getElementById('adjust-student'), id = document.getElementById('adjust-user-id');
-            if (b && b.dataset.userId) { id.value = b.dataset.userId; box.value = b.dataset.userLabel; box.classList.add('is-valid'); }
+            if (b && b.dataset.userId) {
+                id.value = b.dataset.userId; box.value = b.dataset.userLabel; box.classList.add('is-valid');
+                setStudent(b.dataset.credits);
+            } else if (!id.value) {
+                setStudent(null);
+            }
         });
     })();
 </script>

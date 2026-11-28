@@ -8,8 +8,8 @@ use App\Models\InventoryLogModel;
 use RuntimeException;
 
 /**
- * Head Librarian: "Inventory Management" (add/remove copies with a reason).
- * Librarian Staff: "Inventory Monitoring" (read-only stock levels and history).
+ * Update Stock: the Head Librarian and Librarian Staff can add or remove copies
+ * (each change needs a reason and is recorded in the stock history and Activity Log).
  */
 class Inventory extends BaseController
 {

@@ -14,11 +14,11 @@ class SettingModel extends Model
         'library_name'       => ['Library name', 'The Cozy Nook', 'text', 'Shown in the header and on reports.'],
         'loan_days'          => ['Loan period (days)', '7', 'int', 'How long a student may keep a book.'],
         'max_loans'          => ['Max books per student', '3', 'int', 'Books a student may have out at once.'],
-        // Credits added for violations (a student is blocked at 20 credits).
-        'credits_per_late_day' => ['Credits per day late', '1', 'credits', 'Added for each day a book is returned late.'],
-        'max_late_credits'     => ['Max credits per late return', '5', 'credits', 'Cap on credits from a single late return.'],
-        'damaged_credits'      => ['Credits for a damaged book', '3', 'credits', 'Added when a book comes back damaged.'],
-        'lost_credits'         => ['Credits for a lost book', '5', 'credits', 'Added when a borrowed book is reported lost.'],
+        // Credits deducted for violations (students start with 20; at 0 they are blocked).
+        'credits_per_late_day' => ['Credits deducted per day late', '1', 'credits', 'Deducted for each day a book is late.'],
+        'max_late_credits'     => ['Max credits deducted per late book', '5', 'credits', 'Cap on credits deducted for a single late book.'],
+        'damaged_credits'      => ['Credits deducted for a damaged book', '3', 'credits', 'Deducted when a book comes back damaged.'],
+        'lost_credits'         => ['Credits deducted for a lost book', '5', 'credits', 'Deducted when a borrowed book is reported lost.'],
     ];
 
     protected $table         = 'settings';

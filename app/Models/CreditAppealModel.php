@@ -4,7 +4,7 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-/** Students' requests to have their credits reduced (appeal or library service). */
+/** Students' requests to have credits restored (appeal or library service). */
 class CreditAppealModel extends Model
 {
     public const TYPES = [

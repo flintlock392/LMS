@@ -5,7 +5,7 @@
 <?= $this->section('content') ?>
 <a class="small d-inline-block mb-3" href="<?= site_url($editing ? 'books/' . $book['id'] : 'books') ?>"><i class="bi bi-arrow-left"></i> Back</a>
 <div class="panel" style="max-width: 860px">
-    <form method="post" action="<?= site_url($editing ? 'books/' . $book['id'] . '/update' : 'books/create') ?>">
+    <form method="post" action="<?= site_url($editing ? 'books/' . $book['id'] . '/update' : 'books/create') ?>" enctype="multipart/form-data">
         <?= csrf_field() ?>
         <div class="row g-3">
             <div class="col-md-8">
@@ -19,6 +19,10 @@
             <div class="col-md-6">
                 <label class="form-label" for="author">Author *</label>
                 <input class="form-control" id="author" name="author" value="<?= esc(old('author', $book['author'] ?? '', false)) ?>" required maxlength="150">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="edition">Edition / version</label>
+                <input class="form-control" id="edition" name="edition" value="<?= esc(old('edition', $book['edition'] ?? '', false)) ?>" maxlength="80" placeholder="e.g. 4th edition">
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="category_id">Category</label>
@@ -55,8 +59,26 @@
                 </div>
             <?php else: ?>
                 <div class="col-12"><div class="alert alert-light border small mb-0"><i class="bi bi-info-circle me-1"></i>
-                    This title has <strong><?= (int) $book['stock_count'] ?></strong> copies. <?= is_head() ? 'Change the count with <a href="' . site_url('library?tab=collections') . '">Library → Update Stock</a>' : 'Only the Head Librarian can change the number of copies' ?> so every change is logged.</div></div>
+                    This title has <strong><?= (int) $book['stock_count'] ?></strong> copies. Change the count with <a href="<?= site_url('library?tab=collections') ?>">Library → Update Stock</a> so every change is logged.</div></div>
             <?php endif; ?>
+            <div class="col-12">
+                <label class="form-label" for="cover_file">Cover image</label>
+                <div class="d-flex gap-3 align-items-start">
+                    <?php if ($editing): ?><div class="flex-shrink-0"><?= book_cover($book, 'cover-md') ?></div><?php endif; ?>
+                    <div class="flex-grow-1">
+                        <input class="form-control" type="file" id="cover_file" name="cover_file" accept="image/jpeg,image/png,image/webp">
+                        <div class="form-text">Upload a JPG, PNG or WebP picture of the cover (up to 2 MB)<?= $editing ? ' to replace the current one' : '' ?>.</div>
+                        <input class="form-control form-control-sm mt-2" type="url" id="cover_url" name="cover_url" maxlength="255" placeholder="…or paste a web address of the cover image (https://…)"
+                               value="<?= esc(old('cover_url', preg_match('#^https?://#i', (string) ($book['cover'] ?? '')) ? $book['cover'] : '', false)) ?>">
+                        <?php if ($editing && ! empty($book['cover'])): ?>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="remove_cover" name="remove_cover" value="1">
+                                <label class="form-check-label small" for="remove_cover">Remove the cover (show the coloured spine instead)</label>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
             <div class="col-12">
                 <label class="form-label" for="description">Description</label>
                 <textarea class="form-control" id="description" name="description" rows="3" maxlength="2000"><?= esc(old('description', $book['description'] ?? '', false)) ?></textarea>

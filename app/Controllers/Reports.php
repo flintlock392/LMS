@@ -25,13 +25,13 @@ class Reports extends BaseController
             'late_returns'  => (int) $one("SELECT COUNT(*) v FROM borrowings WHERE status = 'returned' AND returned_at BETWEEN ? AND ? AND DATE(returned_at) > due_date", [$start, $end]),
             'lost'          => (int) $one("SELECT COUNT(*) v FROM borrowings WHERE status = 'lost' AND returned_at BETWEEN ? AND ?", [$start, $end]),
             'new_students'  => (int) $one("SELECT COUNT(*) v FROM users WHERE role = 'student' AND created_at BETWEEN ? AND ?", [$start, $end]),
-            'credits_added'   => (int) $one('SELECT COALESCE(SUM(`change`),0) v FROM credit_logs WHERE `change` > 0 AND created_at BETWEEN ? AND ?', [$start, $end]),
-            'credits_reduced' => (int) -$one('SELECT COALESCE(SUM(`change`),0) v FROM credit_logs WHERE `change` < 0 AND created_at BETWEEN ? AND ?', [$start, $end]),
+            'credits_deducted' => (int) -$one('SELECT COALESCE(SUM(`change`),0) v FROM credit_logs WHERE `change` < 0 AND created_at BETWEEN ? AND ?', [$start, $end]),
+            'credits_restored' => (int) $one('SELECT COALESCE(SUM(`change`),0) v FROM credit_logs WHERE `change` > 0 AND created_at BETWEEN ? AND ?', [$start, $end]),
             'borrowers'     => (int) $one('SELECT COUNT(DISTINCT user_id) v FROM borrowings WHERE borrowed_at BETWEEN ? AND ?', [$start, $end]),
         ];
 
         $topBooks = $db->query(
-            'SELECT books.id, books.title, books.author, COUNT(*) n FROM borrowings
+            'SELECT books.id, books.title, books.author, books.isbn, books.cover, COUNT(*) n FROM borrowings
              JOIN books ON books.id = borrowings.book_id
              WHERE borrowed_at BETWEEN ? AND ? GROUP BY books.id ORDER BY n DESC, books.title LIMIT 10',
             [$start, $end]
@@ -69,7 +69,7 @@ class Reports extends BaseController
                 $months[$r['m']]['loans'] = (int) $r['n'];
             }
         }
-        foreach ($db->query("SELECT DATE_FORMAT(created_at, '%Y-%m') m, SUM(`change`) n FROM credit_logs WHERE `change` > 0 AND created_at >= ? GROUP BY m", [$since])->getResultArray() as $r) {
+        foreach ($db->query("SELECT DATE_FORMAT(created_at, '%Y-%m') m, -SUM(`change`) n FROM credit_logs WHERE `change` < 0 AND created_at >= ? GROUP BY m", [$since])->getResultArray() as $r) {
             if (isset($months[$r['m']])) {
                 $months[$r['m']]['credits'] = (int) $r['n'];
             }

@@ -23,10 +23,10 @@ class Dashboard extends BaseController
         $borrowings = new BorrowingModel();
         $users      = new UserModel();
 
-        // Students at risk: with credits, highest first.
+        // Students who have lost credits, fewest credits first.
         $atRisk = (new UserModel())->select('id, name, id_number, credits')
-            ->where('role', UserModel::STUDENT)->where('credits >', 0)
-            ->orderBy('credits', 'DESC')->orderBy('name')->findAll(6);
+            ->where('role', UserModel::STUDENT)->where('credits <', CreditPolicy::MAX)
+            ->orderBy('credits', 'ASC')->orderBy('name')->findAll(6);
 
         return view('dashboard/staff', [
             'bookStats'  => $books->stats(),
@@ -34,8 +34,8 @@ class Dashboard extends BaseController
             'requests'   => (new \App\Models\BookRequestModel())->pendingCount(),
             'requestStudents' => (new \App\Models\BookRequestModel())->pendingStudentCount(),   // the banner counts students, not books
             'appeals'    => (new CreditAppealModel())->pendingCount(),
-            'blocked'    => (new UserModel())->where('role', UserModel::STUDENT)->where('credits >=', CreditPolicy::MAX)->countAllResults(),
-            'restricted' => (new UserModel())->where('role', UserModel::STUDENT)->where('credits >=', CreditPolicy::TIERS[1][0])->countAllResults(),
+            'blocked'    => (new UserModel())->where('role', UserModel::STUDENT)->where('credits <=', 0)->countAllResults(),
+            'restricted' => (new UserModel())->where('role', UserModel::STUDENT)->where('credits <', CreditPolicy::TIERS[0][0])->countAllResults(),   // below good standing
             'atRisk'     => $atRisk,
             'students'   => $users->where('role', UserModel::STUDENT)->where('status', 'active')->countAllResults(),
             'staffCount' => $users->whereIn('role', UserModel::STAFF_ROLES)->countAllResults(),
@@ -65,7 +65,7 @@ class Dashboard extends BaseController
 
         return view('dashboard/student', [
             'loans'     => $loans,
-            'credits'   => (int) ((new UserModel())->find($userId)['credits'] ?? 0),
+            'credits'   => (int) ((new UserModel())->find($userId)['credits'] ?? CreditPolicy::MAX),
             'estimated' => $estimated,
             'history'   => (new BorrowingModel())->where('user_id', $userId)->where('status !=', 'borrowed')->countAllResults(),
             'newBooks'  => (new BookModel())->withAvailability()->orderBy('books.created_at', 'DESC')->findAll(4),

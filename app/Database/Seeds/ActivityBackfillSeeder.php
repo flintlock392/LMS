@@ -58,8 +58,8 @@ class ActivityBackfillSeeder extends Seeder
 
         $credits = $db->table('credit_logs c')->select('c.*, u.name, u.id_number')->join('users u', 'u.id = c.user_id')->get()->getResultArray();
         foreach ($credits as $c) {
-            $add($c['created_at'], (int) $c['created_by'], 'credit', $c['change'] > 0 ? 'added' : 'reduced',
-                ($c['change'] > 0 ? 'Added ' . $c['change'] : 'Reduced ' . abs((int) $c['change'])) . ' credit(s) for ' . $c['name'] . ' (' . $c['id_number'] . ') · now ' . $c['balance_after'],
+            $add($c['created_at'], (int) $c['created_by'], 'credit', $c['change'] > 0 ? 'restored' : 'deducted',
+                ($c['change'] > 0 ? 'Restored ' . $c['change'] : 'Deducted ' . abs((int) $c['change'])) . ' credit(s) for ' . $c['name'] . ' (' . $c['id_number'] . ') · now ' . $c['balance_after'],
                 'user', (int) $c['user_id']);
         }
 

@@ -22,7 +22,7 @@ if (! function_exists('asset')) {
 }
 
 if (! function_exists('credit_badge')) {
-    /** Pill like "7 credits · Warning", coloured by standing level. */
+    /** Pill like "15 credits · Warning" (out of 20), coloured by standing level. */
     function credit_badge(int|string|null $credits, bool $withLabel = true): string
     {
         $credits = (int) $credits;
@@ -104,6 +104,53 @@ if (! function_exists('apply_course_filter')) {
                 ->groupEnd();
         } elseif (in_array($course, UserModel::COURSES, true)) {
             $query->where($column, $course);
+        }
+    }
+}
+
+if (! function_exists('shelf_options')) {
+    /**
+     * Shelves in use, grouped by section: ['A' => ['A-101', 'A-102'], 'F' => [...]].
+     * The section is the part before the dash (A-101 → A).
+     */
+    function shelf_options(): array
+    {
+        $rows = db_connect()->query("SELECT DISTINCT shelf_location AS s FROM books WHERE archived_at IS NULL AND shelf_location IS NOT NULL AND shelf_location <> '' ORDER BY shelf_location")->getResultArray();
+        $groups = [];
+        foreach (array_column($rows, 's') as $shelf) {
+            $groups[shelf_section($shelf)][] = $shelf;
+        }
+        ksort($groups, SORT_NATURAL);
+
+        return $groups;
+    }
+}
+
+if (! function_exists('shelf_section')) {
+    /** "F-604" → "F"; a shelf without a dash is its own section. */
+    function shelf_section(string $shelf): string
+    {
+        return strtoupper(trim(explode('-', $shelf, 2)[0]));
+    }
+}
+
+if (! function_exists('apply_shelf_filter')) {
+    /**
+     * Shelf filter: "section:F" = every shelf in section F (F-601, F-602…); anything else = that exact shelf.
+     *
+     * @param \CodeIgniter\Model|\CodeIgniter\Database\BaseBuilder $query
+     */
+    function apply_shelf_filter($query, string $column, string $shelf): void
+    {
+        $shelf = trim($shelf);
+        if ($shelf === '') {
+            return;
+        }
+        if (str_starts_with($shelf, 'section:')) {
+            $section = substr($shelf, 8);
+            $query->groupStart()->where($column, $section)->orLike($column, $section . '-', 'after')->groupEnd();
+        } else {
+            $query->where($column, $shelf);
         }
     }
 }
@@ -238,6 +285,68 @@ if (! function_exists('status_badge')) {
         [$tone, $label] = $map[$status] ?? ['secondary', ucfirst($status)];
 
         return '<span class="pill pill-' . $tone . '">' . esc($label) . '</span>';
+    }
+}
+
+if (! function_exists('user_avatar')) {
+    /** Round profile badge with the person's initials, in a colour that stays the same for each user. */
+    function user_avatar(array $user, string $class = ''): string
+    {
+        $colors   = ['#7a4a3a', '#4c6488', '#6e7d4e', '#8e3b45', '#9a5530', '#5b4a7a', '#2f6f6a'];
+        $words    = preg_split('/\s+/', trim((string) ($user['name'] ?? ''))) ?: [];
+        $initials = mb_strtoupper(mb_substr($words[0] ?? '?', 0, 1) . (count($words) > 1 ? mb_substr(end($words), 0, 1) : ''));
+        $color    = $colors[(int) ($user['id'] ?? 0) % count($colors)];
+
+        return '<span class="user-avatar ' . esc($class, 'attr') . '" style="background:' . $color . '" aria-hidden="true">' . esc($initials) . '</span>';
+    }
+}
+
+if (! function_exists('book_cover_url')) {
+    /**
+     * Web address of a book's cover image, or null if it has none.
+     * Stored as "ol:<cover id>" (Open Library), a full https:// address,
+     * or the file name of a cover uploaded into public/uploads/covers.
+     *
+     * @param string $size S, M or L (Open Library sizes)
+     */
+    function book_cover_url(?string $cover, string $size = 'M'): ?string
+    {
+        $cover = trim((string) $cover);
+        if ($cover === '') {
+            return null;
+        }
+        if (str_starts_with($cover, 'ol:')) {
+            return 'https://covers.openlibrary.org/b/id/' . (int) substr($cover, 3) . '-' . $size . '.jpg';
+        }
+        if (preg_match('#^https?://#i', $cover)) {
+            return $cover;
+        }
+
+        return base_url('uploads/covers/' . rawurlencode(basename($cover)));
+    }
+}
+
+if (! function_exists('book_cover')) {
+    /**
+     * The book's cover, or a coloured spine with its first letter when there is
+     * no cover (or the image can't be loaded).
+     *
+     * @param string $class extra classes, e.g. "cover-sm" / "cover-lg"
+     */
+    function book_cover(array $book, string $class = '', string $size = 'M'): string
+    {
+        $spines = ['#6e7d4e', '#9a5530', '#4c6488', '#8e3b45', '#55342b', '#7a6a3a'];
+        $color  = $spines[(int) ($book['book_id'] ?? $book['id'] ?? 0) % count($spines)];
+        $letter = esc(mb_substr((string) $book['title'], 0, 1));
+        $spine  = '<span class="book-spine ' . esc($class, 'attr') . '" style="background:' . $color . '" aria-hidden="true">' . $letter . '</span>';
+        $url    = book_cover_url($book['cover'] ?? null, $size);
+        if ($url === null) {
+            return $spine;
+        }
+
+        // If the picture fails to load, swap in the spine.
+        return '<img class="book-cover ' . esc($class, 'attr') . '" src="' . esc($url, 'attr') . '" alt="Cover of ' . esc((string) $book['title'], 'attr') . '" loading="lazy" decoding="async"'
+            . ' onerror="this.outerHTML=this.dataset.fallback" data-fallback="' . esc($spine, 'attr') . '">';
     }
 }
 

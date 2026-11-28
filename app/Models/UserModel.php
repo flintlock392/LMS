@@ -101,7 +101,8 @@ class UserModel extends Model
     /** Active students for the circulation drop-downs. */
     public function activeBorrowers(): array
     {
-        return $this->select('id, id_number, name')
+        return $this->select('id, id_number, name, course, year_level, credits')
+            ->select("(SELECT COUNT(*) FROM borrowings b WHERE b.user_id = users.id AND b.status = 'borrowed') AS on_loan", false)
             ->where('status', 'active')
             ->orderBy('name', 'ASC')
             ->findAll();

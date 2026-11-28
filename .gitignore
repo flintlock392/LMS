@@ -17,6 +17,12 @@ writable/uploads/*
 !writable/uploads/index.html
 writable/debugbar/*
 !writable/debugbar/index.html
+# Book covers uploaded by staff (keep folder only)
+public/uploads/covers/*
+!public/uploads/covers/index.html
+# Bundled cover (The Pragmatic Programmer, 20th anniversary edition)
+!public/uploads/covers/pragmatic-programmer-20th.png
+
 writable/*.db
 writable/*.sqlite
 

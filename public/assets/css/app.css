@@ -168,6 +168,70 @@ a:hover { color: var(--brown-900); }
     display: flex; align-items: center; justify-content: center; color: #f6e9da; font-family: var(--font-display); font-size: 1.4rem;
 }
 .book-card h3 { font-size: 1rem; font-weight: 600; margin: 0 0 .15rem; }
+
+/* Book covers (or a coloured spine when there is no picture) */
+.book-cover, .book-spine {
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 52px; height: 76px; border-radius: 4px; object-fit: cover; background: #eee3d3;
+    box-shadow: 0 2px 6px rgba(60, 30, 20, .18);
+}
+.book-spine { color: #f6e9da; font-family: var(--font-display); font-size: 1.4rem; }
+.cover-sm  { width: 32px; height: 46px; font-size: 1rem; border-radius: 3px; }
+.cover-xs  { width: 20px; height: 28px; font-size: .7rem; border-radius: 2px; box-shadow: none; }
+/* A small cover beside a book's title in tables and lists */
+.book-cell { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+
+/* Profile badge with initials */
+.user-avatar {
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 36px; height: 36px; border-radius: 50%; color: #fff; font-weight: 600; font-size: .85rem; letter-spacing: .02em;
+    box-shadow: 0 0 0 2px #fff, 0 1px 4px rgba(60, 30, 20, .2);
+}
+.user-avatar.avatar-md { width: 40px; height: 40px; font-size: .9rem; }
+
+/* Issue a book pop-up */
+.issue-modal { border: 0; border-radius: 18px; overflow: hidden; }
+.issue-modal .modal-header { background: var(--cream-100); border-bottom: 1px solid #ecdcc4; }
+.issue-icon { width: 42px; height: 42px; border-radius: 12px; background: var(--brown-600); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+.issue-step { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--brown-700); display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem; }
+.issue-step span { width: 22px; height: 22px; border-radius: 50%; background: var(--brown-600); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: .75rem; }
+.search-icon { position: relative; }
+.search-icon > i { position: absolute; left: .7rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: .85rem; pointer-events: none; }
+.search-icon > .form-control { padding-left: 2rem; }
+.pick-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: .45rem; max-height: 330px; overflow-y: auto; overflow-x: hidden; padding: 2px 4px 2px 2px; }
+.issue-note { flex: 1 1 280px; }
+.issue-actions { margin-left: auto; display: flex; gap: .5rem; flex-shrink: 0; }
+.pick {
+    display: flex; align-items: center; gap: .75rem; padding: .55rem .75rem; border: 1px solid #ecdcc4; border-radius: 12px; min-width: 0;
+    position: relative;   /* keeps the hidden radio button inside its own row */
+    background: #fff; cursor: pointer; transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+}
+.pick:hover { border-color: #d9bfa0; background: #fffaf3; }
+.pick:has(input:checked) { border-color: var(--brown-600); background: var(--cream-100); box-shadow: 0 0 0 1px var(--brown-600); }
+.pick:has(input:focus-visible) { outline: 2px solid var(--brown-600); outline-offset: 2px; }
+.pick.is-disabled { opacity: .5; cursor: not-allowed; background: #faf6f0; }
+.pick.is-limited .pick-sub { color: var(--muted); }
+.pick-body { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.25; }
+.pick-title { font-weight: 600; font-size: .9rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-sub { font-size: .76rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-meta { display: flex; align-items: center; gap: .4rem; font-size: .74rem; color: var(--muted); margin-top: .2rem; }
+.pick-meta .pill { font-size: .68rem; }
+.pick-check { color: var(--brown-600); font-size: 1.15rem; opacity: 0; transition: opacity .12s ease; }
+.pick:has(input:checked) .pick-check { opacity: 1; }
+.pick-empty { font-size: .85rem; color: var(--muted); text-align: center; padding: 1rem 0; margin: 0; }
+.issue-summary { background: #fffaf3; border-top: 1px solid #ecdcc4; gap: .75rem 1rem; justify-content: flex-start; }
+.summary-slot { display: flex; align-items: center; gap: .6rem; min-width: 0; max-width: 36%; }
+.summary-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.summary-text strong { font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summary-text small { color: var(--muted); font-size: .75rem; }
+.summary-empty { display: inline-flex; align-items: center; gap: .4rem; color: var(--muted); font-size: .85rem; border: 1px dashed #d9c3a6; border-radius: 10px; padding: .45rem .7rem; }
+.summary-arrow { color: var(--muted); }
+@media (max-width: 575.98px) { .summary-slot { max-width: 100%; } .summary-arrow { display: none; } }
+.book-cell > div { min-width: 0; }
+.cover-card { width: 56px; height: 82px; }
+.cover-md  { width: 84px; height: 124px; font-size: 2rem; }
+.cover-lg  { width: 150px; height: 222px; font-size: 3.2rem; border-radius: 6px; }
+@media (max-width: 575.98px) { .cover-lg { width: 100px; height: 148px; } }
 .book-card .meta { font-size: .8rem; color: var(--muted); }
 
 /* ==========================================================================
@@ -421,7 +485,11 @@ a.stat:hover { border-color: var(--cream-300); box-shadow: 0 4px 12px rgba(85,52
 
 /* Credits: 0–20 meter and appeal cards */
 .credit-meter { width: 120px; height: 6px; border-radius: 4px; background: #efe5d6; overflow: hidden; }
-.credit-meter span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #6aa06a, #d4a03a 40%, #c0504d 80%, #3b2a25); background-size: 120px 100%; }
+/* Credits left (full bar = all 20 credits), coloured by standing level */
+.credit-meter span { display: block; height: 100%; border-radius: 4px; background: #6aa06a; }
+.credit-meter.tone-warning span { background: #d4a03a; }
+.credit-meter.tone-danger span { background: #c0504d; }
+.credit-meter.tone-dark span { background: #3b2a25; }
 .credit-ring {
     width: 130px; height: 130px; margin: .25rem auto 0; border-radius: 50%; border: 10px solid #e3eedf;
     display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fffdf9;
@@ -464,6 +532,10 @@ a.stat:hover { border-color: var(--cream-300); box-shadow: 0 4px 12px rgba(85,52
 .cat-chips a { font-size: .8rem; padding: .25rem .7rem; border-radius: 999px; background: #f3ebe0; color: var(--brown-700); text-decoration: none; }
 .cat-chips a.active { background: var(--brown-600); color: #fff; }
 .cat-chips a .n { font-weight: 600; margin-left: .25rem; }
+/* My Loans: Due today / Overdue chips stand out when they have books */
+.loan-chips a { font-size: .85rem; padding: .35rem .85rem; }
+.loan-chips a.chip-alert:not(.active) { background: #f8e1dc; color: #9b2c2c; }
+.loan-chips a:focus-visible { outline: 2px solid var(--brown-600); outline-offset: 2px; }
 
 /* Simple horizontal bar charts (reports) */
 .hbar { display: grid; grid-template-columns: minmax(0, 1fr) 2fr auto; gap: .5rem .75rem; align-items: center; font-size: .85rem; }

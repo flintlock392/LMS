@@ -16,7 +16,7 @@ class BookRequestModel extends Model
     /** Requests with book, student and loan details. */
     public function detailed(): self
     {
-        return $this->select('book_requests.*, books.title, books.isbn, books.author, books.course AS book_course,
+        return $this->select('book_requests.*, books.title, books.isbn, books.author, books.cover, books.edition, books.course AS book_course,
                 u.name AS borrower_name, u.id_number AS borrower_id_number, u.course AS student_course,
                 br.due_date, br.borrowed_at', false)
             ->select(BookModel::availableSql() . ' AS available', false)
@@ -43,6 +43,7 @@ class BookRequestModel extends Model
             $this->where('book_requests.created_at <=', $f['to'] . ' 23:59:59');
         }
         apply_course_filter($this, 'books.course', (string) ($f['course'] ?? ''));
+        apply_shelf_filter($this, 'books.shelf_location', (string) ($f['shelf'] ?? ''));
         if (! empty($f['category_id'])) {
             $f['category_id'] === 'none'
                 ? $this->where('books.category_id', null)

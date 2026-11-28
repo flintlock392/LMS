@@ -25,29 +25,29 @@ $waiting  = array_filter($appeals, static fn ($a) => $a['status'] === 'pending')
                 <div><div class="fw-semibold fs-5"><?= $loans ?></div>on loan now</div>
                 <div><div class="fw-semibold fs-5"><?= $tier['key'] === 'blocked' ? '—' : $days ?></div>days per loan</div>
             </div>
-            <?php if ($tier['next'] !== null && $tier['key'] !== 'blocked'): ?>
-                <p class="small text-muted mt-3 mb-0"><?= $tier['next'] - $credits ?> more credit(s) moves you to "<?= esc(CreditPolicy::tier($tier['next'])['label']) ?>".</p>
+            <?php if ($tier['worse'] !== null): ?>
+                <p class="small text-muted mt-3 mb-0">Losing <?= $tier['toWorse'] ?> more credit<?= $tier['toWorse'] === 1 ? '' : 's' ?> moves you to "<?= esc($tier['worse']) ?>".</p>
             <?php endif; ?>
         </div>
 
         <div class="panel small">
             <h3 class="panel-title"><i class="bi bi-info-circle"></i> How credits work</h3>
-            <p class="mb-2">You start at <strong>0</strong>. Credits are added when a book is returned late
-                (<?= (int) setting('credits_per_late_day') ?> per day, up to <?= (int) setting('max_late_credits') ?>), damaged (+<?= (int) setting('damaged_credits') ?>) or lost (+<?= (int) setting('lost_credits') ?>).</p>
+            <p class="mb-2">You start with <strong><?= CreditPolicy::MAX ?> credits</strong>. Credits are deducted when a book is late
+                (<?= (int) setting('credits_per_late_day') ?> per day, up to <?= (int) setting('max_late_credits') ?>), damaged (−<?= (int) setting('damaged_credits') ?>) or lost (−<?= (int) setting('lost_credits') ?>).</p>
             <ul class="mb-2 ps-3">
-                <?php foreach (CreditPolicy::TIERS as $i => $t): $to = CreditPolicy::TIERS[$i + 1][0] ?? null; ?>
-                    <li class="<?= $t[1] === $tier['key'] ? 'fw-semibold' : '' ?>"><?= $to === null ? $t[0] : $t[0] . '–' . ($to - 1) ?>: <?= esc($t[2]) ?>. <?= esc($t[6]) ?></li>
+                <?php foreach (CreditPolicy::TIERS as $i => $t): ?>
+                    <li class="<?= $t[1] === $tier['key'] ? 'fw-semibold' : '' ?>"><?= CreditPolicy::rangeLabel($i) ?>: <?= esc($t[2]) ?>. <?= esc($t[6]) ?></li>
                 <?php endforeach; ?>
             </ul>
-            <p class="mb-0"><strong>To lower your credits</strong>, appeal to the Head Librarian or help out in the library, then report it below.</p>
+            <p class="mb-0"><strong>To get credits back</strong>, appeal to the Head Librarian or help out in the library, then report it below.</p>
         </div>
     </div>
 
     <div class="col-xl-7">
         <div class="panel">
-            <h3 class="panel-title"><i class="bi bi-chat-square-text"></i> Ask to reduce my credits</h3>
-            <?php if ($credits === 0): ?>
-                <p class="text-muted mb-0">You have no credits. Keep returning books on time!</p>
+            <h3 class="panel-title"><i class="bi bi-chat-square-text"></i> Ask to get credits back</h3>
+            <?php if ($credits >= CreditPolicy::MAX): ?>
+                <p class="text-muted mb-0">You have all <?= CreditPolicy::MAX ?> credits. Keep returning books on time!</p>
             <?php elseif ($waiting): ?>
                 <p class="mb-0"><span class="pill pill-warning">Waiting for review</span> Your appeal is with the Head Librarian. You'll see the answer below.</p>
             <?php else: ?>
@@ -89,7 +89,7 @@ $waiting  = array_filter($appeals, static fn ($a) => $a['status'] === 'pending')
                         </div>
                         <p class="appeal-message mt-2 mb-2"><?= nl2br(esc($a['message'])) ?></p>
                         <?php if ($a['status'] === 'approved'): ?>
-                            <div class="small text-success">Removed <?= (int) $a['reduced_by'] ?> credit(s).<?= $a['response'] ? ' "' . esc($a['response']) . '"' : '' ?></div>
+                            <div class="small text-success">Restored <?= (int) $a['reduced_by'] ?> credit(s).<?= $a['response'] ? ' "' . esc($a['response']) . '"' : '' ?></div>
                         <?php elseif ($a['status'] === 'declined'): ?>
                             <div class="small text-danger">Declined.<?= $a['response'] ? ' Reason: ' . esc($a['response']) : '' ?></div>
                         <?php else: ?>
@@ -105,13 +105,13 @@ $waiting  = array_filter($appeals, static fn ($a) => $a['status'] === 'pending')
         <div class="panel">
             <h3 class="panel-title"><i class="bi bi-clock-history"></i> Credit history</h3>
             <?php if (! $history): ?>
-                <div class="empty"><i class="bi bi-emoji-smile"></i>No credits so far.</div>
+                <div class="empty"><i class="bi bi-emoji-smile"></i>No changes yet. You still have all your credits.</div>
             <?php else: ?>
                 <div class="table-responsive"><table class="table table-nook">
                     <thead><tr><th>Date</th><th>Change</th><th>Reason</th><th>Balance</th></tr></thead>
                     <tbody><?php foreach ($history as $l): $up = $l['change'] > 0; ?>
                         <tr><td><?= fmt_date($l['created_at']) ?></td>
-                            <td><span class="pill <?= $up ? 'pill-danger' : 'pill-success' ?>"><?= $up ? '+' : '−' ?><?= abs((int) $l['change']) ?></span></td>
+                            <td><span class="pill <?= $up ? 'pill-success' : 'pill-danger' ?>"><?= $up ? '+' : '−' ?><?= abs((int) $l['change']) ?></span></td>
                             <td><?= esc(CreditLogModel::LABELS[$l['reason']] ?? $l['reason']) ?><div class="sub"><?= esc($l['notes'] ?: ($l['title'] ?? '')) ?></div></td>
                             <td><?= (int) $l['balance_after'] ?></td></tr>
                     <?php endforeach; ?></tbody>

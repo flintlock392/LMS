@@ -99,6 +99,8 @@ class Books extends BaseController
             'title'            => 'required|min_length[2]|max_length[255]',
             'isbn'             => 'required|max_length[20]',
             'author'           => 'required|max_length[150]',
+            'edition'          => 'permit_empty|max_length[80]',
+            'cover_url'        => 'permit_empty|max_length[255]|valid_url_strict[https,http]',
             'category_id'      => 'permit_empty|is_natural_no_zero|is_not_unique[categories.id]',
             'publisher'        => 'permit_empty|max_length[150]',
             'publication_year' => 'permit_empty|integer|greater_than_equal_to[1000]|less_than_equal_to[' . ((int) date('Y') + 1) . ']',
@@ -119,14 +121,38 @@ class Books extends BaseController
                 $errors['isbn'] = 'A book with this ISBN already exists.';
             }
         }
+        // Cover: an uploaded picture wins, then a pasted web address; otherwise keep what's there.
+        $file = $this->request->getFile('cover_file');
+        $hasUpload = $file !== null && $file->getError() !== UPLOAD_ERR_NO_FILE;
+        if ($hasUpload && (! $file->isValid() || ! in_array($file->getMimeType(), ['image/jpeg', 'image/png', 'image/webp'], true) || $file->getSizeByUnit('kb') > 2048)) {
+            $errors['cover_file'] = 'The cover must be a JPG, PNG or WebP image of 2 MB or less.';
+        }
         if ($errors) {
             return redirect()->back()->withInput()->with('errors', $errors);
+        }
+
+        $oldCover = $id !== null ? (string) ($this->books->find($id)['cover'] ?? '') : '';
+        $cover    = $oldCover;
+        if ($hasUpload) {
+            $name = $file->getRandomName();
+            $file->move(FCPATH . 'uploads/covers', $name);
+            $cover = $name;
+        } elseif (trim((string) ($input['cover_url'] ?? '')) !== '') {
+            $cover = trim($input['cover_url']);
+        } elseif (! empty($input['remove_cover']) || (preg_match('#^https?://#i', $oldCover) && trim((string) ($input['cover_url'] ?? '')) === '')) {
+            $cover = '';   // removed, or the pasted address was cleared
+        }
+        // Delete an uploaded file that is no longer used.
+        if ($oldCover !== '' && $oldCover !== $cover && ! str_starts_with($oldCover, 'ol:') && ! preg_match('#^https?://#i', $oldCover)) {
+            @unlink(FCPATH . 'uploads/covers/' . basename($oldCover));
         }
 
         $data = [
             'title'            => trim($input['title']),
             'isbn'             => $input['isbn'],
             'author'           => trim($input['author']),
+            'edition'          => trim((string) ($input['edition'] ?? '')) ?: null,
+            'cover'            => $cover !== '' ? $cover : null,
             'category_id'      => ($input['category_id'] ?? '') !== '' ? (int) $input['category_id'] : null,
             'publisher'        => trim((string) ($input['publisher'] ?? '')) ?: null,
             'publication_year' => ($input['publication_year'] ?? '') !== '' ? (int) $input['publication_year'] : null,

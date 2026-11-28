@@ -11,7 +11,7 @@ use RuntimeException;
 
 /**
  * Credit Management (replaces fines).
- *   Head Librarian:  "Credit Management" — add / reduce credits, approve or decline appeals.
+ *   Head Librarian:  "Credit Management" — deduct / restore credits, approve or decline appeals.
  *   Librarian Staff: "Credit Records"    — view only.
  *
  * Tabs: students (balances) · appeals · history
@@ -43,14 +43,11 @@ class Credits extends BaseController
             }
             foreach (CreditPolicy::TIERS as $i => $t) {
                 if ($tier === $t[1]) {
-                    $users->where('credits >=', $t[0]);
-                    if (isset(CreditPolicy::TIERS[$i + 1])) {
-                        $users->where('credits <', CreditPolicy::TIERS[$i + 1][0]);
-                    }
+                    $users->where('credits >=', $t[0])->where('credits <=', CreditPolicy::tierMax($i));
                 }
             }
             $data['tier']  = $tier;
-            $data['rows']  = $users->orderBy('credits', 'DESC')->orderBy('name', 'ASC')->paginate(15);
+            $data['rows']  = $users->orderBy('credits', 'ASC')->orderBy('name', 'ASC')->paginate(15);   // fewest credits first
             $data['pager'] = $users->pager;
         } elseif ($tab === 'appeals') {
             $status  = (string) $this->request->getGet('status');
@@ -70,7 +67,7 @@ class Credits extends BaseController
         } else {
             $dir  = (string) $this->request->getGet('direction');
             $logs = new CreditLogModel();
-            $data['direction'] = in_array($dir, ['added', 'reduced'], true) ? $dir : '';
+            $data['direction'] = in_array($dir, ['deducted', 'restored'], true) ? $dir : '';
             $data['rows']      = $logs->filtered(['q' => $q, 'direction' => $data['direction']])->paginate(15);
             $data['pager']     = $logs->pager;
         }
@@ -78,7 +75,7 @@ class Credits extends BaseController
         return view('credits/index', $data);
     }
 
-    /** Head Librarian: add credits for a violation, or reduce them (library service, settlement, correction). */
+    /** Head Librarian: deduct credits for a violation, or restore them (library service, settlement, correction). */
     public function adjust()
     {
         $direction = (string) $this->request->getPost('direction');
@@ -87,7 +84,7 @@ class Credits extends BaseController
         $userId    = (int) $this->request->getPost('user_id');
         $notes     = trim((string) $this->request->getPost('notes'));
 
-        $valid = $direction === 'add' ? CreditLogModel::ADD_REASONS : CreditLogModel::REDUCE_REASONS;
+        $valid = $direction === 'deduct' ? CreditLogModel::DEDUCT_REASONS : CreditLogModel::RESTORE_REASONS;
         if (! $userId) {
             return redirect()->back()->withInput()->with('error', 'Choose a student from the suggestions.');
         }
@@ -98,8 +95,26 @@ class Credits extends BaseController
             return redirect()->back()->withInput()->with('error', 'Enter between 1 and ' . CreditPolicy::MAX . ' credits.');
         }
 
+        // Can't deduct more than the student has, or restore past the full amount.
+        $student = (new UserModel())->where('role', UserModel::STUDENT)->find($userId);
+        if (! $student) {
+            return redirect()->back()->withInput()->with('error', 'Student not found.');
+        }
+        $have = (int) $student['credits'];
+        $most = $direction === 'deduct' ? $have : CreditPolicy::MAX - $have;
+        if ($most <= 0) {
+            return redirect()->back()->withInput()->with('error', $direction === 'deduct'
+                ? $student['name'] . ' has no credits left to deduct (0 credits, blocked).'
+                : $student['name'] . ' already has all ' . CreditPolicy::MAX . ' credits.');
+        }
+        if ($amount > $most) {
+            return redirect()->back()->withInput()->with('error', $direction === 'deduct'
+                ? $student['name'] . ' only has ' . $have . ' credit' . ($have === 1 ? '' : 's') . ' left, so you can deduct at most ' . $most . '.'
+                : $student['name'] . ' has ' . $have . ' of ' . CreditPolicy::MAX . ' credits, so you can restore at most ' . $most . '.');
+        }
+
         try {
-            $after = (new CirculationService())->changeCredits($userId, $direction === 'add' ? $amount : -$amount, $reason, (int) session()->get('userId'), $notes);
+            $after = (new CirculationService())->changeCredits($userId, $direction === 'deduct' ? -$amount : $amount, $reason, (int) session()->get('userId'), $notes);
         } catch (RuntimeException $e) {
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
@@ -107,10 +122,10 @@ class Credits extends BaseController
         $user = (new UserModel())->find($userId);
         $tier = CreditPolicy::tier($after);
 
-        return redirect()->back()->with('success', $user['name'] . ' now has ' . $after . ' credit' . ($after === 1 ? '' : 's') . ' (' . $tier['label'] . '). ' . $tier['explain']);
+        return redirect()->back()->with('success', $user['name'] . ' now has ' . $after . ' of ' . CreditPolicy::MAX . ' credit' . ($after === 1 ? '' : 's') . ' (' . $tier['label'] . '). ' . $tier['explain']);
     }
 
-    /** Head Librarian approves an appeal and removes credits. */
+    /** Head Librarian approves an appeal and restores credits. */
     public function approveAppeal(int $id)
     {
         try {
@@ -119,7 +134,7 @@ class Credits extends BaseController
             return redirect()->back()->with('error', $e->getMessage());
         }
 
-        return redirect()->back()->with('success', 'Appeal approved. The student now has ' . $after . ' credit' . ($after === 1 ? '' : 's') . ' (' . CreditPolicy::tier($after)['label'] . ').');
+        return redirect()->back()->with('success', 'Appeal approved. The student now has ' . $after . ' of ' . CreditPolicy::MAX . ' credit' . ($after === 1 ? '' : 's') . ' (' . CreditPolicy::tier($after)['label'] . ').');
     }
 
     public function declineAppeal(int $id)

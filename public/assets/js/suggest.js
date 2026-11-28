@@ -101,6 +101,7 @@
                 input.value = it.pick || it.label;
                 input.classList.remove('is-invalid');
                 input.classList.add('is-valid');
+                pickInput.dispatchEvent(new CustomEvent('suggest:pick', { detail: it }));   // e.g. Credit Management reads it.credits
                 return;
             }
             input.value = it.value;
@@ -148,6 +149,7 @@
 
         input.addEventListener('input', function () {
             if (pickInput) {           // typing again clears the earlier choice
+                if (pickInput.value) { pickInput.dispatchEvent(new CustomEvent('suggest:pick', { detail: null })); }
                 pickInput.value = '';
                 input.classList.remove('is-valid');
             }
