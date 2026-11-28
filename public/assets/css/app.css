@@ -142,6 +142,7 @@ a:hover { color: var(--brown-900); }
     body.is-home .login-card .form-control { padding: .35rem .55rem; font-size: .85rem; }
     body.is-home .login-card .mb-4 { margin-bottom: 1.1rem !important; }
     body.is-home .login-card .btn-nook { width: 130px; padding: .4rem 0; font-size: .95rem; }
+    body.is-home .login-card .btn-nook.btn-wide { width: auto !important; padding: .45rem 1.5rem; }   /* "Go to dashboard": room on both sides */
 
     /* Books page: header, title, filters and page links stay put; only the book list scrolls */
     body.is-catalog .public-main { display: flex; flex-direction: column; }
