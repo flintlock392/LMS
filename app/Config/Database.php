@@ -200,5 +200,16 @@ class Database extends Config
         if (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';
         }
+
+        // Hosted MySQL (e.g. Aiven, used with Render) requires SSL. Put the provider's
+        // CA certificate (the whole PEM text) in the DB_SSL_CA environment variable.
+        $ca = getenv('DB_SSL_CA');
+        if (is_string($ca) && trim($ca) !== '') {
+            $file = WRITEPATH . 'db-ca.pem';
+            if (! is_file($file)) {
+                file_put_contents($file, str_replace('\n', "\n", trim($ca)) . "\n");
+            }
+            $this->default['encrypt'] = ['ssl_ca' => $file, 'ssl_verify' => true];
+        }
     }
 }

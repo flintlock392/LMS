@@ -38,3 +38,7 @@ phpunit.xml
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Local database exports (contain password hashes)
+deploy/
+*.sql
